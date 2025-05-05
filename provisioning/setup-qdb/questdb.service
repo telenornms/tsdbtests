@@ -1,0 +1,32 @@
+[Unit]
+Description=QuestDB
+Documentation=https://www.questdb.com/docs/
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=2
+ExecStart=/etc/alternatives/java \
+    --add-exports java.base/jdk.internal.math=io.questdb \
+    -p /usr/local/questdb.jar \
+    -m io.questdb/io.questdb.ServerMain \
+    -DQuestDB-Runtime-66535 \
+    -ea -Dnoebug \
+    -XX:+UnlockExperimentalVMOptions \
+    -XX:+AlwaysPreTouch \
+    -XX:+UseParallelOldGC \
+    -d /var/lib/questdb
+ExecReload=/bin/kill -s HUP $MAINPID
+StandardError=syslog
+SyslogIdentifier=questdb
+
+# Prevent writes to /usr, /boot, and /etc
+ProtectSystem=full
+
+LimitNOFILE=1048576
+User=questdb
+Group=questdb
+
+[Install]
+WantedBy=multi-user.target
