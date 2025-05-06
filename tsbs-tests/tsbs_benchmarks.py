@@ -191,7 +191,7 @@ def main():
 
     #print(avg_dict)
     
-    output_file = "tsbs_test_" + args.format + ".json"
+    output_file = "tsbs_test_" + args.format + "-" + args.scale + ".json"
     
     with open(output_file, "w") as f:
         json.dump(avg_dict, f, indent=4)
