@@ -12,10 +12,7 @@ def generate_data(main_file_path, db_format, scale, seed, time_start, time_stop)
 
     run_path = main_file_path + "bin/tsbs_generate_data"
     
-    file_path = main_file_path + "tmp/"
-
-    if not os.path.exists(file_path):
-        os.makedirs(file_path)
+    file_path = "/tmp/"
     
     file_number = 1
 
@@ -43,7 +40,7 @@ def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers
     run_path = main_file_path + "bin/tsbs_load_" + db_engine
 
     #The path to your folder for storing tsbs generated load files
-    file_path = main_file_path + "tmp/" + test_file + ".gz"
+    file_path = "/tmp/" + test_file + ".gz"
     
     full_command = "cat " + file_path + " | gunzip | " + run_path + " --workers " + workers
     for command in extra_commands:
