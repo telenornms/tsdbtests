@@ -210,22 +210,22 @@ def handle_args():
         if args.admin_db_name is None or args.password is None:
             sys.exit("TimeScale needs --admin_db_name and --password")
 
-    if args.workers is None or args.workers == 0:
+    if args.workers is None or args.workers <= 0:
         args.workers = 4
     else:
         args.workers = fix_args({"workers": args.workers})
 
-    if args.runs is None or args.runs == 0:
+    if args.runs is None or args.runs <= 0:
         args.runs = 5
     else:
         args.runs = fix_args({"runs": args.runs})
 
-    if args.scale is None or args.scale == 0:
+    if args.scale is None or args.scale <= 0:
         args.scale = 1000
     else:
         args.scale = fix_args({"scale": args.scale})
 
-    if args.seed is None:
+    if args.seed is None or args.seed <= 0:
         args.seed = 123
     else:
         args.seed = fix_args({"seed": args.seed})
