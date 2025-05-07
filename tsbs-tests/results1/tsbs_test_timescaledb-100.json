@@ -35,7 +35,7 @@
         "metrics_avg": 1745380.068,
         "rows_avg": 349027.072
     },
-    "timescaledb_test_cpu-only": {
+    "timescaledb_test_cpu_only": {
         "metrics": [
             3106958.21,
             3199859.3,

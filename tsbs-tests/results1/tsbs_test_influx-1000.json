@@ -35,7 +35,7 @@
         "metrics_avg": 1155346.3879999998,
         "rows_avg": 145380.108
     },
-    "influx_test_cpu-only": {
+    "influx_test_cpu_only": {
         "metrics": [
             1142725.82,
             1073565.74,

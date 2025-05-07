@@ -35,7 +35,7 @@
         "metrics_avg": 3166840.2159999995,
         "rows_avg": 400494.6020000001
     },
-    "victoriametrics_test_cpu-only": {
+    "victoriametrics_test_cpu_only": {
         "metrics": [
             2646579.07,
             2661487.54,

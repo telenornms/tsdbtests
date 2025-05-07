@@ -35,7 +35,7 @@
         "metrics_avg": 2227799.21,
         "rows_avg": 280329.512
     },
-    "questdb_test_cpu-only": {
+    "questdb_test_cpu_only": {
         "metrics": [
             5779214.33,
             5961880.46,
