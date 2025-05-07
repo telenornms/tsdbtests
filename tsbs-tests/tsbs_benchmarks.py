@@ -6,16 +6,13 @@ import pathlib
 import json
 import argparse
 
-def generate_data(main_file_path, db_format, scale, seed, time_start, time_stop):
+def generate_data(main_file_path, file_name, db_format, scale, seed, time_start, time_stop):
     # The use cases for the files
     use_case = ["devops", "iot", "cpu-only"]
 
     run_path = main_file_path + "bin/tsbs_generate_data"
     
     file_path = "/tmp/"
-
-    #if not os.path.exists(file_path):
-    #    os.makedirs(file_path)
     
     file_number = 1
 
@@ -28,7 +25,7 @@ def generate_data(main_file_path, db_format, scale, seed, time_start, time_stop)
         else:
             new_scale = scale
 
-        full_file_path = file_path+db_format+"_test_"+case+".gz"
+        full_file_path = file_path+db_format+"_"+file_name[file_number-1]+".gz"
 
         print(str(file_number)+": "+full_file_path)
         
@@ -51,6 +48,7 @@ def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers
 
     metrics_list = []
     rows_list = []
+    time_list = []
 
     print("Loading data for " + db_engine + " with file " + file_path + ":")
 
@@ -70,42 +68,45 @@ def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers
         extracted_ints = []
 
         for line in output_lines:
-            if "(" in line and ")" in line:
-                # Find all text within parentheses in the line
-                parenthesized_content = re.findall(r"\((.*?)\)", line)
-
+            if "(" in line and ")" in line:                
                 # Look for integer patterns that are not part of floats
                 # This regex finds integers that are not followed by a period and digit
                 int_matches = re.findall(r"-?\b\d+\b(?!\.\d)", line)
                 
                 extracted_ints.append(int(int_matches[0]))
+                
+                # Finds all floats to grab the time per run
+                time_match = re.findall(r"-?\d+\.\d+", line)
+
+                # Find all text within parentheses in the line
+                parenthesized_content = re.findall(r"\((.*?)\)", line)
 
                 # Extract float numbers from the parenthesized content
                 for content in parenthesized_content:
                     # Look for float patterns in the parenthesized content
-                    float_matches = re.findall(r"-?\d+\.\d+", content)
+                    float_match = re.findall(r"-?\d+\.\d+", content)
                 
-                    if float_matches:
-                        # Convert matches to actual float values
-                        floats = [float(match) for match in float_matches]
-                        extracted_floats.extend(floats)
+                    if float_match:
+                        # Convert match to actual float values
+                        extracted_floats.append(float_match[0])
 
-        metrics_list.append(extracted_floats[0])
-        rows_list.append(extracted_floats[1])
+        metrics_list.append(float(extracted_floats[0]))
+        rows_list.append(float(extracted_floats[1]))
+        time_list.append(float(time_match[0]))
 
     print("All " + str(runs)+ " runs completed")
 
-    return extracted_ints, metrics_list, rows_list
+    return extracted_ints, metrics_list, rows_list, time_list
 
-def create_averages(database_runs_dict):
+def create_averages(db_runs_dict):
     
     avg_runs_dict = {}
 
-    for file in database_runs_dict:
-        avg_runs_dict[file] = {"metrics/sec": database_runs_dict[file]["metrics"], "total_metrics": database_runs_dict[file]["total_metrics"]}
-        avg_runs_dict[file]["metrics_avg"] = sum(database_runs_dict[file]["metrics"]) / len(database_runs_dict[file]["metrics"])
-        avg_runs_dict[file].update({"rows/sec": database_runs_dict[file]["rows"], "total_rows": database_runs_dict[file]["total_rows"]})
-        avg_runs_dict[file]["rows_avg"] = sum(database_runs_dict[file]["rows"]) / len(database_runs_dict[file]["rows"])
+    for file in db_runs_dict:
+        avg_runs_dict[file] = {"time_run": db_runs_dict[file]["time_run"], "metrics_sec": db_runs_dict[file]["metrics"], "total_metrics": db_runs_dict[file]["total_metrics"]}
+        avg_runs_dict[file]["metrics_avg"] = sum(db_runs_dict[file]["metrics"]) / len(db_runs_dict[file]["metrics"])
+        avg_runs_dict[file].update({"rows_sec": db_runs_dict[file]["rows"], "total_rows": db_runs_dict[file]["total_rows"]})
+        avg_runs_dict[file]["rows_avg"] = sum(db_runs_dict[file]["rows"]) / len(db_runs_dict[file]["rows"])
 
     return avg_runs_dict
 
@@ -161,22 +162,22 @@ def main():
     db_setup = {
     "influx": {
         "db_engine": "influx", 
-        "test_files": ["influx_test_devops", "influx_test_iot", "influx_test_cpu-only"], 
+        "test_files": ["influx_devops", "influx_iot", "influx_cpu_only"], 
         "extra_commands": [" --auth-token ", args.auth_token]
         }, 
      "questdb": {
          "db_engine": "questdb", 
-         "test_files": ["questdb_test_devops", "questdb_test_iot", "questdb_test_cpu-only"],
+         "test_files": ["questdb_devops", "questdb_iot", "questdb_cpu_only"],
          "extra_commands": []
          },
      "timescaledb": {
          "db_engine": "timescaledb",
-         "test_files": ["timescaledb_test_devops", "timescaledb_test_iot", "timescaledb_test_cpu-only"],
+         "test_files": ["timescaledb_devops", "timescaledb_iot", "timescaledb_cpu_only"],
          "extra_commands": [" --admin-db-name ", args.admin_db_name, " --pass ", args.password]
          },
      "victoriametrics": {
          "db_engine": "victoriametrics",
-         "test_files": ["victoriametrics_test_devops", "victoriametrics_test_iot", "victoriametrics_test_cpu-only"],
+         "test_files": ["victoriametrics_devops", "victoriametrics_iot", "victoriametrics_cpu_only"],
          "extra_commands": []
          }
     }
@@ -184,24 +185,27 @@ def main():
     # The file path for where you stored tsbs
     # Default is home folder
     main_file_path = str(pathlib.Path.home()) + "/tsbs/"
+    
+    file_name = ["devops", "iot", "cpu_only"]
 
     # Generating the data
-    generate_data(main_file_path, args.format, args.scale, args.seed, args.timestamp_start, args.timestamp_stop)
+    generate_data(main_file_path, file_name, args.format, args.scale, args.seed, args.timestamp_start, args.timestamp_stop)
 
     database_runs_dict = {}
+    
+    file_number = 0
 
     # Runs the process for all files
     for test_file in db_setup[args.format]["test_files"]:
-        extra_ints, metrics_list, rows_list = load_data(main_file_path, db_setup[args.format]["db_engine"], test_file, db_setup[args.format]["extra_commands"], args.workers, args.runs)
-        database_runs_dict[test_file] = {"total_metrics": extra_ints[0], "metrics": metrics_list,"total_rows": extra_ints[1], "rows": rows_list}
+        extra_ints, metrics_list, rows_list, time_list = load_data(main_file_path, db_setup[args.format]["db_engine"], test_file, db_setup[args.format]["extra_commands"], args.workers, args.runs)
+        database_runs_dict[file_name[file_number]] = {"time_run": time_list, "metrics": metrics_list, "total_metrics": extra_ints[0], "rows": rows_list, "total_rows": extra_ints[1]}
+        file_number += 1
 
     avg_dict = create_averages(database_runs_dict)
 
     avg_dict["metadata"] = {"db_engine": args.format, "scale": args.scale, "seed": args.seed, "workers": args.workers, "runs": args.runs}
-
-    #print(avg_dict)
     
-    output_file = "tsbs_test_" + args.format + "-" + args.scale + ".json"
+    output_file = "tsbs_" + args.format + "_" + args.scale + ".json"
     
     with open(output_file, "w") as f:
         json.dump(avg_dict, f, indent=4)
