@@ -13,6 +13,9 @@ def generate_data(main_file_path, db_format, scale, seed, time_start, time_stop)
     run_path = main_file_path + "bin/tsbs_generate_data"
     
     file_path = "/tmp/"
+
+    #if not os.path.exists(file_path):
+    #    os.makedirs(file_path)
     
     file_number = 1
 
@@ -76,7 +79,7 @@ def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers
                 int_matches = re.findall(r"-?\b\d+\b(?!\.\d)", line)
                 
                 extracted_ints.append(int(int_matches[0]))
-            
+
                 # Extract float numbers from the parenthesized content
                 for content in parenthesized_content:
                     # Look for float patterns in the parenthesized content
@@ -99,8 +102,9 @@ def create_averages(database_runs_dict):
     avg_runs_dict = {}
 
     for file in database_runs_dict:
-        avg_runs_dict[file] = database_runs_dict[file].copy()
+        avg_runs_dict[file] = {"metrics/sec": database_runs_dict[file]["metrics"], "total_metrics": database_runs_dict[file]["total_metrics"]}
         avg_runs_dict[file]["metrics_avg"] = sum(database_runs_dict[file]["metrics"]) / len(database_runs_dict[file]["metrics"])
+        avg_runs_dict[file].update({"rows/sec": database_runs_dict[file]["rows"], "total_rows": database_runs_dict[file]["total_rows"]})
         avg_runs_dict[file]["rows_avg"] = sum(database_runs_dict[file]["rows"]) / len(database_runs_dict[file]["rows"])
 
     return avg_runs_dict
@@ -188,8 +192,8 @@ def main():
 
     # Runs the process for all files
     for test_file in db_setup[args.format]["test_files"]:
-        metrics_list, rows_list = load_data(main_file_path, db_setup[args.format]["db_engine"], test_file, db_setup[args.format]["extra_commands"], args.workers, args.runs)
-        database_runs_dict[test_file] = {"metrics": metrics_list, "rows": rows_list}
+        extra_ints, metrics_list, rows_list = load_data(main_file_path, db_setup[args.format]["db_engine"], test_file, db_setup[args.format]["extra_commands"], args.workers, args.runs)
+        database_runs_dict[test_file] = {"total_metrics": extra_ints[0], "metrics": metrics_list,"total_rows": extra_ints[1], "rows": rows_list}
 
     avg_dict = create_averages(database_runs_dict)
 
