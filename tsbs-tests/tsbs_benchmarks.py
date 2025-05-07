@@ -1,4 +1,3 @@
-import os
 import subprocess
 import sys
 import re
@@ -7,6 +6,26 @@ import json
 import argparse
 
 def generate_data(main_file_path, file_name, db_format, scale, seed, time_start, time_stop):
+    """
+    Generates files using tsbs_generate
+
+    Parameters:
+        main_file_path : str 
+            The home path for user + /tsbs
+        file_name : list
+            The list of filenames to use, fixes for JSON
+        db_format : str
+            The type of database, influx, questdb, timescaledb or victoriametrics
+        scale : int
+            The number of different items for data generation
+        seed : int
+            The seed for generating data, identical data for identical seeds
+        time_start : str
+            The starting timestamp for the generated data
+        time_stop : str
+            The stopping timestamp for the generated data
+    """
+
     # The use cases for the files
     use_case = ["devops", "iot", "cpu-only"]
 
@@ -36,6 +55,37 @@ def generate_data(main_file_path, file_name, db_format, scale, seed, time_start,
         file_number += 1
 
 def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers = 4, runs = 5):
+    """
+    Loads the data into the database using tsbs_load_<db_engine>
+    and gets the number of metrics per sec, rows per sec, overall time per run
+    and total number of metrics and rows
+
+    Parameters:
+        main_file_path : str
+            The home path for user + /tsbs
+        db_engine : str
+            The type of database, influx, questdb, timescaledb or victoriametrics
+        test_file : str
+            The string path for the file to be read into the database
+        extra_commands : list
+            A list of additional commands to pass to tsbs_load
+        workers : int
+            The number of simultaneous processes to split the data ingestion
+        runs : int
+            The number of times the file should be added to the database
+    
+    Returns:
+        totals : list
+            The list of total numbers of metrics and rows
+        metrics_list : list
+            The list of metrics/sec for each run, rounded to 0 decimals
+        rows_list : list
+            The list of rows/sec for each run, rounded to 0 decimals
+        time_list : list
+            The list of time for each run, rounded to 2 decimals
+
+    """
+
     # The path to your tsbs/bin folder
     run_path = main_file_path + "bin/tsbs_load_" + db_engine
 
@@ -99,6 +149,20 @@ def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers
     return totals, metrics_list, rows_list, time_list
 
 def create_averages(db_runs_dict):
+    """
+    Creates the averages for each file per metrics, rows and tiem
+
+    Parameters:
+        db_runs_dict : dict
+            A dictionary containing all the data about all the runs; time/run, metrics/sec, rows/sec,
+            and total metrics and rows
+    
+    Returns:
+        avg_runs_dict : dict
+            The same dict as db_runs_dict, but including the average metrics/sec/file, rows/sec/file,
+            and time/run/file
+    """
+
     avg_runs_dict = {}
 
     for file in db_runs_dict:
@@ -112,6 +176,14 @@ def create_averages(db_runs_dict):
     return avg_runs_dict
 
 def handle_args():
+    """
+    Handles the inline arguments for the running of the file
+
+    Returns:
+        args : argparse.Namespace
+            The object with the arguments, it handles arguments...
+    """
+
     parser = argparse.ArgumentParser(description="A program for testing tsbs for Influx, QuestDB, TimeScaleDB and VictoriaMetrics")
 
     # Arguments for data load
