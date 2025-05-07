@@ -56,6 +56,11 @@ def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers
 
         output = subprocess.run(full_command, shell=True, capture_output=True, text=True)
 
+        for line in output.stderr.strip().split("\n"):
+            if re.findall(r'panic', line, re.IGNORECASE):
+                print(output.stderr)
+                sys.exit("Database error!")
+
         output_lines = output.stdout.strip().split("\n")
 
         extracted_floats = []
