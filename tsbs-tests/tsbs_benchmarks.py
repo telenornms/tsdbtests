@@ -103,10 +103,12 @@ def create_averages(db_runs_dict):
     avg_runs_dict = {}
 
     for file in db_runs_dict:
-        avg_runs_dict[file] = {"time_run": db_runs_dict[file]["time_run"], "metrics_sec": db_runs_dict[file]["metrics"], "total_metrics": db_runs_dict[file]["total_metrics"]}
-        avg_runs_dict[file]["metrics_avg"] = sum(db_runs_dict[file]["metrics"]) / len(db_runs_dict[file]["metrics"])
+        avg_runs_dict[file] = {"time_run": db_runs_dict[file]["time_run"]} 
+        avg_runs_dict[file]["time_avg"] = round(sum(db_runs_dict[file]["time_run"]) / len(db_runs_dict[file]["time_run"]), 4)
+        avg_runs_dict[file].update({"metrics_sec": db_runs_dict[file]["metrics"], "total_metrics": db_runs_dict[file]["total_metrics"]})
+        avg_runs_dict[file]["metrics_avg"] = round(sum(db_runs_dict[file]["metrics"]) / len(db_runs_dict[file]["metrics"]), 4)
         avg_runs_dict[file].update({"rows_sec": db_runs_dict[file]["rows"], "total_rows": db_runs_dict[file]["total_rows"]})
-        avg_runs_dict[file]["rows_avg"] = sum(db_runs_dict[file]["rows"]) / len(db_runs_dict[file]["rows"])
+        avg_runs_dict[file]["rows_avg"] = round(sum(db_runs_dict[file]["rows"]) / len(db_runs_dict[file]["rows"]), 4)
 
     return avg_runs_dict
 
