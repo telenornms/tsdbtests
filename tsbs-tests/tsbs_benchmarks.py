@@ -52,7 +52,7 @@ def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers
     print("Loading data for " + db_engine + " with file " + file_path + ":")
 
     for i in range(runs):
-        print(f"Run number: " + str(i+1), end="\r")
+        print("Run number: " + str(i+1), end="\r")
 
         output = subprocess.run(full_command, shell=True, capture_output=True, text=True)
 
@@ -64,34 +64,35 @@ def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers
         output_lines = output.stdout.strip().split("\n")
 
         extracted_floats = []
+        extracted_ints = []
 
         for line in output_lines:
-            if '(' in line and ')' in line:
+            if "(" in line and ")" in line:
                 # Find all text within parentheses in the line
-                parenthesized_content = re.findall(r'\((.*?)\)', line)
+                parenthesized_content = re.findall(r"\((.*?)\)", line)
+
+                # Look for integer patterns that are not part of floats
+                # This regex finds integers that are not followed by a period and digit
+                int_matches = re.findall(r"-?\b\d+\b(?!\.\d)", line)
+                
+                extracted_ints.append(int(int_matches[0]))
             
                 # Extract float numbers from the parenthesized content
                 for content in parenthesized_content:
                     # Look for float patterns in the parenthesized content
-                    float_matches = re.findall(r'-?\d+\.\d+', content)
+                    float_matches = re.findall(r"-?\d+\.\d+", content)
                 
                     if float_matches:
                         # Convert matches to actual float values
                         floats = [float(match) for match in float_matches]
                         extracted_floats.extend(floats)
-        
+
         metrics_list.append(extracted_floats[0])
         rows_list.append(extracted_floats[1])
 
-    """
-    print("Metrics:")
-    print(metrics_list)
-    print("Rows:")
-    print(rows_list)
-    """
     print("All " + str(runs)+ " runs completed")
 
-    return metrics_list, rows_list
+    return extracted_ints, metrics_list, rows_list
 
 def create_averages(database_runs_dict):
     
