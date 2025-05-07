@@ -21,7 +21,7 @@ def generate_data(main_file_path, file_name, db_format, scale, seed, time_start,
     for case in use_case:
         # Devops data are 10x the size of the others, so need to shrink
         if case == "devops":
-            new_scale = int(scale)//10
+            new_scale = scale//10
         else:
             new_scale = scale
 
@@ -35,14 +35,14 @@ def generate_data(main_file_path, file_name, db_format, scale, seed, time_start,
 
         file_number += 1
 
-def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers = "4", runs = 5):
+def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers = 4, runs = 5):
     # The path to your tsbs/bin folder
     run_path = main_file_path + "bin/tsbs_load_" + db_engine
 
     #The path to your folder for storing tsbs generated load files
     file_path = "/tmp/" + test_file + ".gz"
     
-    full_command = "cat " + file_path + " | gunzip | " + run_path + " --workers " + workers
+    full_command = "cat " + file_path + " | gunzip | " + run_path + " --workers " + str(workers)
     for command in extra_commands:
         full_command += command
 
@@ -65,7 +65,7 @@ def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers
         output_lines = output.stdout.strip().split("\n")
 
         extracted_floats = []
-        extracted_ints = []
+        totals = []
 
         for line in output_lines:
             if "(" in line and ")" in line:                
@@ -73,7 +73,7 @@ def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers
                 # This regex finds integers that are not followed by a period and digit
                 int_matches = re.findall(r"-?\b\d+\b(?!\.\d)", line)
                 
-                extracted_ints.append(int(int_matches[0]))
+                totals.append(int(int_matches[0]))
                 
                 # Finds all floats to grab the time per run
                 time_match = re.findall(r"-?\d+\.\d+", line)
@@ -90,30 +90,28 @@ def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers
                         # Convert match to actual float values
                         extracted_floats.append(float_match[0])
 
-        metrics_list.append(float(extracted_floats[0]))
-        rows_list.append(float(extracted_floats[1]))
-        time_list.append(float(time_match[0]))
+        metrics_list.append(int(round(float(extracted_floats[0]))))
+        rows_list.append(int(round(float(extracted_floats[1]))))
+        time_list.append(round(float(time_match[0]), 2))
 
     print("All " + str(runs)+ " runs completed")
 
-    return extracted_ints, metrics_list, rows_list, time_list
+    return totals, metrics_list, rows_list, time_list
 
 def create_averages(db_runs_dict):
-    
     avg_runs_dict = {}
 
     for file in db_runs_dict:
         avg_runs_dict[file] = {"time_run": db_runs_dict[file]["time_run"]} 
-        avg_runs_dict[file]["time_avg"] = round(sum(db_runs_dict[file]["time_run"]) / len(db_runs_dict[file]["time_run"]), 4)
+        avg_runs_dict[file]["time_avg"] = round(sum(db_runs_dict[file]["time_run"]) / len(db_runs_dict[file]["time_run"]), 2)
         avg_runs_dict[file].update({"metrics_sec": db_runs_dict[file]["metrics"], "total_metrics": db_runs_dict[file]["total_metrics"]})
-        avg_runs_dict[file]["metrics_avg"] = round(sum(db_runs_dict[file]["metrics"]) / len(db_runs_dict[file]["metrics"]), 4)
+        avg_runs_dict[file]["metrics_avg"] = sum(db_runs_dict[file]["metrics"]) // len(db_runs_dict[file]["metrics"])
         avg_runs_dict[file].update({"rows_sec": db_runs_dict[file]["rows"], "total_rows": db_runs_dict[file]["total_rows"]})
-        avg_runs_dict[file]["rows_avg"] = round(sum(db_runs_dict[file]["rows"]) / len(db_runs_dict[file]["rows"]), 4)
+        avg_runs_dict[file]["rows_avg"] = sum(db_runs_dict[file]["rows"]) // len(db_runs_dict[file]["rows"])
 
     return avg_runs_dict
 
 def handle_args():
-    
     parser = argparse.ArgumentParser(description="A program for testing tsbs for Influx, QuestDB, TimeScaleDB and VictoriaMetrics")
 
     # Arguments for data load
@@ -141,14 +139,22 @@ def handle_args():
             sys.exit("TimeScale needs --admin_db_name and --password")
 
     if args.workers is None:
-        args.workers = "4"
+        args.workers = 4
+    else:
+        args.workers = int(args.workers)
     if args.runs is None:
         args.runs = 5
+    else:
+        args.runs = int(args.runs)
 
     if args.scale is None:
         args.scale = 1000
+    else:
+        args.scale = int(args.scale)
     if args.seed is None:
         args.seed = 123
+    else:
+        args.seed = int(args.seed)
     if args.timestamp_start is None:
         args.timestamp_start = "2025-05-01T00:00:00Z"
     if args.timestamp_stop is None:
@@ -199,15 +205,15 @@ def main():
 
     # Runs the process for all files
     for test_file in db_setup[args.format]["test_files"]:
-        extra_ints, metrics_list, rows_list, time_list = load_data(main_file_path, db_setup[args.format]["db_engine"], test_file, db_setup[args.format]["extra_commands"], args.workers, args.runs)
-        database_runs_dict[file_name[file_number]] = {"time_run": time_list, "metrics": metrics_list, "total_metrics": extra_ints[0], "rows": rows_list, "total_rows": extra_ints[1]}
+        totals, metrics_list, rows_list, time_list = load_data(main_file_path, db_setup[args.format]["db_engine"], test_file, db_setup[args.format]["extra_commands"], args.workers, args.runs)
+        database_runs_dict[file_name[file_number]] = {"time_run": time_list, "metrics": metrics_list, "total_metrics": totals[0], "rows": rows_list, "total_rows": totals[1]}
         file_number += 1
 
     avg_dict = create_averages(database_runs_dict)
 
     avg_dict["metadata"] = {"db_engine": args.format, "scale": args.scale, "seed": args.seed, "workers": args.workers, "runs": args.runs}
     
-    output_file = "tsbs_" + args.format + "_" + args.scale + ".json"
+    output_file = "tsbs_" + args.format + "_" + str(args.scale) + ".json"
     
     with open(output_file, "w") as f:
         json.dump(avg_dict, f, indent=4)
