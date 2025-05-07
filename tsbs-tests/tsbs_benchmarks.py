@@ -210,29 +210,49 @@ def handle_args():
         if args.admin_db_name is None or args.password is None:
             sys.exit("TimeScale needs --admin_db_name and --password")
 
-    if args.workers is None:
+    if args.workers is None or args.workers == 0:
         args.workers = 4
     else:
-        args.workers = int(args.workers)
-    if args.runs is None:
+        args.workers = fix_args({"workers": args.workers})
+
+    if args.runs is None or args.runs == 0:
         args.runs = 5
     else:
-        args.runs = int(args.runs)
+        args.runs = fix_args({"runs": args.runs})
 
-    if args.scale is None:
+    if args.scale is None or args.scale == 0:
         args.scale = 1000
     else:
-        args.scale = int(args.scale)
+        args.scale = fix_args({"scale": args.scale})
+
     if args.seed is None:
         args.seed = 123
     else:
-        args.seed = int(args.seed)
-    if args.timestamp_start is None:
+        args.seed = fix_args({"seed": args.seed})
+
+    if args.timestamp_start is None or not re.findall(r"\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ", args.timestamp_start):
         args.timestamp_start = "2025-05-01T00:00:00Z"
-    if args.timestamp_stop is None:
+
+    if args.timestamp_stop is None or not re.findall(r"\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ", args.timestamp_stop):
         args.timestamp_stop = "2025-05-02T00:00:00Z"
 
     return args
+
+def fix_args(argument_dict):
+    try:
+        argument = int(list(argument_dict.values())[0])
+    except:
+        match list(argument_dict.keys())[0]:
+            case "workers":
+                argument = 4
+            case "runs":
+                argument = 5
+            case "scale":
+                argument = 1000
+            case "seed":
+                argument = 123
+
+    return argument
 
 def main():
 
