@@ -97,7 +97,7 @@ def load_data(main_file_path, db_engine, test_file, extra_commands, workers, run
     extracted_floats = []
     totals = []
 
-    print("Loading data for " + db_engine + " with file " + file_path + ":")
+    print("Loading data for " + db_engine + " with file " + file_path)
 
     output = subprocess.run(full_command, shell=True, capture_output=True, text=True)
 
