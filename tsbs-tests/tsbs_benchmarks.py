@@ -136,6 +136,10 @@ def load_data(main_file_path, db_engine, test_file, extra_commands, workers, run
     rows_list.append(int(round(float(extracted_floats[1]))))
     time_list.append(round(float(time_match[0]), 2))
 
+    # Removes the file after done loading
+    path_file_path = pathlib.Path(file_path)
+    pathlib.Path.unlink(path_file_path)
+
     return totals, metrics_list, rows_list, time_list
 
 def create_averages(db_runs_dict):
