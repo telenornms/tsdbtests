@@ -42,6 +42,8 @@ def generate_data(main_file_path, file_name, db_format, scale, seed, timestamps,
 
     full_file_path = file_path + db_format + "_" + file_name + "_" + str(run) + ".gz"
 
+    print("Creating file: " + full_file_path)
+
     full_command = run_path + " --use-case="+use_case[file_name] + " --format="+db_format + " --seed="+str(seed) + " --scale="+str(new_scale) + " --timestamp-start="+timestamps[str(run)][0] + " --timestamp-end="+timestamps[str(run)][1] + " --log-interval=10s" + " | gzip > " + full_file_path
 
     subprocess.run(full_command, shell=True)
@@ -310,7 +312,7 @@ def main():
                 db_runs_dict[file_name[file_number]]["metrics"].extend(metrics_list)
                 db_runs_dict[file_name[file_number]]["rows"].extend(rows_list)
         
-        print("All " + str(args.runs)+ " runs completed")
+        print("All " + str(args.runs)+ " runs completed\n")
         file_number += 1
 
     avg_dict = create_averages(db_runs_dict)
