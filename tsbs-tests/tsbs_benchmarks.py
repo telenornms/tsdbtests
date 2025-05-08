@@ -32,8 +32,6 @@ def generate_data(main_file_path, file_name, db_format, scale, seed, timestamps,
     run_path = main_file_path + "bin/tsbs_generate_data"
     
     file_path = "/tmp/"
-    
-    file_number = 1
 
     print("Generating data for " + db_format + ":")
 
@@ -43,15 +41,13 @@ def generate_data(main_file_path, file_name, db_format, scale, seed, timestamps,
     else:
         new_scale = scale
 
-    full_file_path = file_path + db_format + "_" + file_name[file_number-1] + "_" + str(run) + ".gz"
+    full_file_path = file_path + db_format + "_" + file_name + "_" + str(run) + ".gz"
 
-    print(str(file_number)+": "+full_file_path)
+    print(str(run+1)+": "+full_file_path)
     
     full_command = run_path + " --use-case="+file_name + " --format="+db_format + " --seed="+str(seed) + " --scale="+str(new_scale) + " --timestamp-start="+timestamps[str(run)][0] + " --timestamp-end="+timestamps[str(run)][0] + " --log-interval=10s" + " | gzip > " + full_file_path
 
     subprocess.run(full_command, shell=True)
-
-    file_number += 1
 
 def load_data(main_file_path, db_engine, test_file, extra_commands, workers, run):
     """
@@ -102,8 +98,6 @@ def load_data(main_file_path, db_engine, test_file, extra_commands, workers, run
     #questdb_tables = ["cpu", "diagnostics", "disk", "diskio", "kernel", "mem", "net", "nginx", "postgresl", "readings", "redis"]
 
     print("Loading data for " + db_engine + " with file " + file_path + ":")
-
-    print("Run number: " + str(run+1), end="\r")
 
     output = subprocess.run(full_command, shell=True, capture_output=True, text=True)
 
@@ -317,6 +311,7 @@ def main():
     for test_file in db_setup[args.format]["test_files"]:
     #for run in range(args.runs):
         for run in range(args.runs):
+            print("Run number: " + str(run+1))
             # Generating the data
             generate_data(main_file_path, file_name[file_number], args.format, args.scale, args.seed, timestamps, run)
 
