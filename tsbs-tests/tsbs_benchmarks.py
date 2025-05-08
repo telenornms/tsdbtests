@@ -5,7 +5,7 @@ import pathlib
 import json
 import argparse
 
-def generate_data(main_file_path, file_name, db_format, scale, seed, time_start, time_stop):
+def generate_data(main_file_path, file_name, db_format, scale, seed, time_start, time_stop, run):
     """
     Generates files using tsbs_generate
 
@@ -44,7 +44,7 @@ def generate_data(main_file_path, file_name, db_format, scale, seed, time_start,
         else:
             new_scale = scale
 
-        full_file_path = file_path+db_format+"_"+file_name[file_number-1]+".gz"
+        full_file_path = file_path+db_format+"_"+file_name[file_number-1]+"_"+run+".gz"
 
         print(str(file_number)+": "+full_file_path)
         
@@ -54,7 +54,7 @@ def generate_data(main_file_path, file_name, db_format, scale, seed, time_start,
 
         file_number += 1
 
-def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers = 4, runs = 5):
+def load_data(main_file_path, db_engine, test_file, extra_commands, workers, run):
     """
     Loads the data into the database using tsbs_load_<db_engine>
     and gets the number of metrics per sec, rows per sec, overall time per run
@@ -90,7 +90,7 @@ def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers
     run_path = main_file_path + "bin/tsbs_load_" + db_engine
 
     #The path to your folder for storing tsbs generated load files
-    file_path = "/tmp/" + test_file + ".gz"
+    file_path = "/tmp/" + test_file + "_" + run +".gz"
     
     full_command = "cat " + file_path + " | gunzip | " + run_path + " --workers " + str(workers)
     for command in extra_commands:
@@ -100,58 +100,57 @@ def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers
     rows_list = []
     time_list = []
 
-    questdb_tables = ["cpu", "diagnostics", "disk", "diskio", "kernel", "mem", "net", "nginx", "postgresl", "readings", "redis"]
+    #questdb_tables = ["cpu", "diagnostics", "disk", "diskio", "kernel", "mem", "net", "nginx", "postgresl", "readings", "redis"]
 
     print("Loading data for " + db_engine + " with file " + file_path + ":")
 
-    for i in range(runs):
-        print("Run number: " + str(i+1), end="\r")
+    print("Run number: " + str(run+1), end="\r")
 
-        output = subprocess.run(full_command, shell=True, capture_output=True, text=True)
+    output = subprocess.run(full_command, shell=True, capture_output=True, text=True)
 
-        for line in output.stderr.strip().split("\n"):
-            if re.findall(r'panic', line, re.IGNORECASE):
-                print(output.stderr)
-                sys.exit("Database error!")
+    for line in output.stderr.strip().split("\n"):
+        if re.findall(r'panic', line, re.IGNORECASE):
+            print(output.stderr)
+            sys.exit("Database error!")
 
-        output_lines = output.stdout.strip().split("\n")
+    output_lines = output.stdout.strip().split("\n")
 
-        extracted_floats = []
-        totals = []
+    extracted_floats = []
+    totals = []
 
-        for line in output_lines:
-            if "(" in line and ")" in line:                
-                # Look for integer patterns that are not part of floats
-                # This regex finds integers that are not followed by a period and digit
-                int_matches = re.findall(r"-?\b\d+\b(?!\.\d)", line)
-                
-                totals.append(int(int_matches[0]))
-                
-                # Finds all floats to grab the time per run
-                time_match = re.findall(r"-?\d+\.\d+", line)
+    for line in output_lines:
+        if "(" in line and ")" in line:                
+            # Look for integer patterns that are not part of floats
+            # This regex finds integers that are not followed by a period and digit
+            int_matches = re.findall(r"-?\b\d+\b(?!\.\d)", line)
+            
+            totals.append(int(int_matches[0]))
+            
+            # Finds all floats to grab the time per run
+            time_match = re.findall(r"-?\d+\.\d+", line)
 
-                # Find all text within parentheses in the line
-                parenthesized_content = re.findall(r"\((.*?)\)", line)
+            # Find all text within parentheses in the line
+            parenthesized_content = re.findall(r"\((.*?)\)", line)
 
-                # Extract float numbers from the parenthesized content
-                for content in parenthesized_content:
-                    # Look for float patterns in the parenthesized content
-                    float_match = re.findall(r"-?\d+\.\d+", content)
-                
-                    if float_match:
-                        # Convert match to actual float values
-                        extracted_floats.append(float_match[0])
+            # Extract float numbers from the parenthesized content
+            for content in parenthesized_content:
+                # Look for float patterns in the parenthesized content
+                float_match = re.findall(r"-?\d+\.\d+", content)
+            
+                if float_match:
+                    # Convert match to actual float values
+                    extracted_floats.append(float_match[0])
 
-        metrics_list.append(int(round(float(extracted_floats[0]))))
-        rows_list.append(int(round(float(extracted_floats[1]))))
-        time_list.append(round(float(time_match[0]), 2))
+    metrics_list.append(int(round(float(extracted_floats[0]))))
+    rows_list.append(int(round(float(extracted_floats[1]))))
+    time_list.append(round(float(time_match[0]), 2))
 
-        # Runs a little bobby tables on the questdb database to maintain speed and keep RAM low-ish
-        if db_engine == "questdb":
-            for table in questdb_tables:
-                subprocess.run('curl -G --data-urlencode "query=DROP TABLE IF EXISTS ' + table + '" http://localhost:9000/exec', capture_output=True, shell=True)
+    # Runs a little bobby tables on the questdb database to maintain speed and keep RAM low-ish
+    #if db_engine == "questdb":
+    #    for table in questdb_tables:
+    #        subprocess.run('curl -G --data-urlencode "query=DROP TABLE IF EXISTS ' + table + '" http://localhost:9000/exec', capture_output=True, shell=True)
 
-    print("All " + str(runs)+ " runs completed")
+    #print("All " + str(runs)+ " runs completed")
 
     return totals, metrics_list, rows_list, time_list
 
@@ -307,20 +306,30 @@ def main():
     
     file_name = ["devops", "iot", "cpu_only"]
 
-    # Generating the data
-    generate_data(main_file_path, file_name, args.format, args.scale, args.seed, args.timestamp_start, args.timestamp_stop)
-
-    database_runs_dict = {}
-    
+    db_runs_dict = {}
     file_number = 0
 
-    # Runs the process for all files
     for test_file in db_setup[args.format]["test_files"]:
-        totals, metrics_list, rows_list, time_list = load_data(main_file_path, db_setup[args.format]["db_engine"], test_file, db_setup[args.format]["extra_commands"], args.workers, args.runs)
-        database_runs_dict[file_name[file_number]] = {"time_run": time_list, "metrics": metrics_list, "total_metrics": totals[0], "rows": rows_list, "total_rows": totals[1]}
+    #for run in range(args.runs):
+        for run in range(args.runs):
+            # Generating the data
+            generate_data(main_file_path, file_name, args.format, args.scale, args.seed, args.timestamp_start, args.timestamp_stop, run)
+
+            
+
+            # Runs the process for all files
+            #for test_file in db_setup[args.format]["test_files"]:
+        
+            totals, metrics_list, rows_list, time_list = load_data(main_file_path, db_setup[args.format]["db_engine"], test_file, db_setup[args.format]["extra_commands"], args.workers, run)
+            if run == 0:
+                db_runs_dict[file_name[file_number]] = {"time_run": time_list, "metrics": metrics_list, "total_metrics": totals[0], "rows": rows_list, "total_rows": totals[1]}
+            else:
+                db_runs_dict[file_name[file_number]]["time_run"].extend(time_list)
+                db_runs_dict[file_name[file_number]]["metrics"].extend(metrics_list)
+                db_runs_dict[file_name[file_number]]["rows"].extend(rows_list)
         file_number += 1
 
-    avg_dict = create_averages(database_runs_dict)
+    avg_dict = create_averages(db_runs_dict)
 
     avg_dict["metadata"] = {"db_engine": args.format, "scale": args.scale, "seed": args.seed, "workers": args.workers, "runs": args.runs}
     
