@@ -40,7 +40,7 @@ def generate_data(main_file_path, file_name, db_format, scale, seed, timestamps,
     else:
         new_scale = scale
 
-    full_file_path = file_path + db_format + "_" + file_name + "_" + str(run) + ".gz"
+    full_file_path = file_path + db_format + "_" + file_name + "_" + str(run+1) + ".gz"
 
     print("Creating file: " + full_file_path)
 
@@ -84,7 +84,7 @@ def load_data(main_file_path, db_engine, test_file, extra_commands, workers, run
     run_path = main_file_path + "bin/tsbs_load_" + db_engine
 
     #The path to your folder for storing tsbs generated load files
-    file_path = "/tmp/" + test_file + "_" + str(run) +".gz"
+    file_path = "/tmp/" + test_file + "_" + str(run+1) +".gz"
     
     full_command = "cat " + file_path + " | gunzip | " + run_path + " --workers " + str(workers)
     for command in extra_commands:
