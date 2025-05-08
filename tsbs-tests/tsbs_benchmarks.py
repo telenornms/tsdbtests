@@ -146,6 +146,7 @@ def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers
         rows_list.append(int(round(float(extracted_floats[1]))))
         time_list.append(round(float(time_match[0]), 2))
 
+        # Runs a little bobby tables on the questdb database to maintain speed and keep RAM low-ish
         if db_engine == "questdb":
             for table in questdb_tables:
                 subprocess.run('curl -G --data-urlencode "query=DROP TABLE IF EXISTS ' + table + '" http://localhost:9000/exec', capture_output=True, shell=True)
@@ -224,6 +225,7 @@ def handle_args():
 
     args.seed = fix_args({"seed": args.seed})
 
+    # Checks if the timestamps exists and they look correct
     if args.timestamp_start is None or not re.findall(r"\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ", args.timestamp_start):
         args.timestamp_start = "2025-05-01T00:00:00Z"
 
@@ -233,6 +235,18 @@ def handle_args():
     return args
 
 def fix_args(argument_dict):
+    """
+    Handles bad inputs on the int values and sets them to default values if not fixable
+
+    Parameters:
+        argument_dict : dict
+            A dict with the name of the argparse argument and its value
+    
+    Returns:
+        argument : int
+            Returns the fixed argument for the integers
+    """
+
     try:
         argument = int(list(argument_dict.values())[0])
     except:
