@@ -12,4 +12,5 @@ Scripts for running `tsbs` tests and their results
 | timescale | python tsbs_benchmarks.py -f timescaledb -p [password] -d tsdb |
 | victoriametrics | python tsbs_benchmarks.py -f victoriametrics |
 
-`-s [number]` limits or increases runs, default `1000`
+`-s [number]` limits or increases scale of file, default `1000`
+`-r [number]` changes number of runs and created files, default `5`
