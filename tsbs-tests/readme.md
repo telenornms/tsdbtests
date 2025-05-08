@@ -13,4 +13,5 @@ Scripts for running `tsbs` tests and their results
 | victoriametrics | python tsbs_benchmarks.py -f victoriametrics |
 
 `-s [number]` limits or increases scale of file, default `1000`
+
 `-r [number]` changes number of runs and created files, default `5`
