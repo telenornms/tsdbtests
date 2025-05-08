@@ -37,6 +37,7 @@ def generate_data(main_file_path, file_name, db_format, scale, seed, timestamps,
     # Devops data are 10x the size of the others, so need to shrink
     if use_case[file_name] == "devops":
         new_scale = scale//10
+        new_scale = new_scale if new_scale >= 1 else 1
     else:
         new_scale = scale
 
@@ -93,20 +94,21 @@ def load_data(main_file_path, db_engine, test_file, extra_commands, workers, run
     metrics_list = []
     rows_list = []
     time_list = []
+    extracted_floats = []
+    totals = []
 
-    print("Loading data for " + db_engine + " with file " + file_path + ":")
+    print("Loading data for " + db_engine + " with file " + file_path)
 
     output = subprocess.run(full_command, shell=True, capture_output=True, text=True)
 
+    # Checks if there has been any error in loading with tsbs,
+    # and prints the error and exits the program
     for line in output.stderr.strip().split("\n"):
         if re.findall(r'panic', line, re.IGNORECASE):
             print(output.stderr)
             sys.exit("Database error!")
 
     output_lines = output.stdout.strip().split("\n")
-
-    extracted_floats = []
-    totals = []
 
     for line in output_lines:
         if "(" in line and ")" in line:                
@@ -134,6 +136,10 @@ def load_data(main_file_path, db_engine, test_file, extra_commands, workers, run
     metrics_list.append(int(round(float(extracted_floats[0]))))
     rows_list.append(int(round(float(extracted_floats[1]))))
     time_list.append(round(float(time_match[0]), 2))
+
+    # Removes the file after done loading
+    path_file_path = pathlib.Path(file_path)
+    pathlib.Path.unlink(path_file_path)
 
     return totals, metrics_list, rows_list, time_list
 
@@ -176,16 +182,16 @@ def handle_args():
     parser = argparse.ArgumentParser(description="A program for testing tsbs for Influx, QuestDB, TimeScaleDB and VictoriaMetrics")
 
     # Arguments for data load
-    parser.add_argument("-f", "--format", help="The database format", choices=["influx", "questdb", "timescaledb", "victoriametrics"], required=True)
-    parser.add_argument("-d", "--admin_db_name", help="The database you are using for test, REQUIRED for TimeScale")
-    parser.add_argument("-p", "--password",  help="The password for the database/user, REQUIRED for TimeScale")
-    parser.add_argument("-a", "--auth_token", help="The token for the database/user, REQUIRED for Influx")
-    parser.add_argument("-w", "--workers", help="The number of simultanious processes to run the database load, default=4")
-    parser.add_argument("-r", "--runs", help="The number of runs per file, default=5")
+    parser.add_argument("-f", "--format", help="The database format", choices=["influx", "questdb", "timescaledb", "victoriametrics"], required=True, type=str)
+    parser.add_argument("-d", "--admin_db_name", help="The database you are using for test, REQUIRED for TimeScale", type=str)
+    parser.add_argument("-p", "--password",  help="The password for the database/user, REQUIRED for TimeScale", type=str)
+    parser.add_argument("-a", "--auth_token", help="The token for the database/user, REQUIRED for Influx", type=str)
+    parser.add_argument("-w", "--workers", help="The number of simultanious processes to run the database load, default=4", type=int)
+    parser.add_argument("-r", "--runs", help="The number of runs per file, default=5", type=int)
     
     # Arguments for data generation
-    parser.add_argument("-s", "--scale", help="The scale for the files, default=1000 for iot and cpu, default=100 for devops")
-    parser.add_argument("-e", "--seed", help="The seed for data generation, same data across all formats, default=123")
+    parser.add_argument("-s", "--scale", help="The scale for the files, default=1000 for iot and cpu, default=100 for devops", type=int)
+    parser.add_argument("-e", "--seed", help="The seed for data generation, same data across all formats, default=123", type=int)
 
     args = parser.parse_args()
 
