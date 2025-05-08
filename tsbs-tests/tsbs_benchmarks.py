@@ -4,6 +4,7 @@ import re
 import pathlib
 import json
 import argparse
+import datetime
 
 def generate_data(main_file_path, file_name, db_format, scale, seed, timestamps, run):
     """
@@ -33,8 +34,6 @@ def generate_data(main_file_path, file_name, db_format, scale, seed, timestamps,
     
     file_path = "/tmp/"
 
-    print("Generating data for " + db_format + ":")
-
     # Devops data are 10x the size of the others, so need to shrink
     if use_case[file_name] == "devops":
         new_scale = scale//10
@@ -43,9 +42,7 @@ def generate_data(main_file_path, file_name, db_format, scale, seed, timestamps,
 
     full_file_path = file_path + db_format + "_" + file_name + "_" + str(run) + ".gz"
 
-    print(str(run+1)+": "+full_file_path)
-    
-    full_command = run_path + " --use-case="+file_name + " --format="+db_format + " --seed="+str(seed) + " --scale="+str(new_scale) + " --timestamp-start="+timestamps[str(run)][0] + " --timestamp-end="+timestamps[str(run)][0] + " --log-interval=10s" + " | gzip > " + full_file_path
+    full_command = run_path + " --use-case="+use_case[file_name] + " --format="+db_format + " --seed="+str(seed) + " --scale="+str(new_scale) + " --timestamp-start="+timestamps[str(run)][0] + " --timestamp-end="+timestamps[str(run)][1] + " --log-interval=10s" + " | gzip > " + full_file_path
 
     subprocess.run(full_command, shell=True)
 
@@ -95,8 +92,6 @@ def load_data(main_file_path, db_engine, test_file, extra_commands, workers, run
     rows_list = []
     time_list = []
 
-    #questdb_tables = ["cpu", "diagnostics", "disk", "diskio", "kernel", "mem", "net", "nginx", "postgresl", "readings", "redis"]
-
     print("Loading data for " + db_engine + " with file " + file_path + ":")
 
     output = subprocess.run(full_command, shell=True, capture_output=True, text=True)
@@ -137,13 +132,6 @@ def load_data(main_file_path, db_engine, test_file, extra_commands, workers, run
     metrics_list.append(int(round(float(extracted_floats[0]))))
     rows_list.append(int(round(float(extracted_floats[1]))))
     time_list.append(round(float(time_match[0]), 2))
-
-    # Runs a little bobby tables on the questdb database to maintain speed and keep RAM low-ish
-    #if db_engine == "questdb":
-    #    for table in questdb_tables:
-    #        subprocess.run('curl -G --data-urlencode "query=DROP TABLE IF EXISTS ' + table + '" http://localhost:9000/exec', capture_output=True, shell=True)
-
-    #print("All " + str(runs)+ " runs completed")
 
     return totals, metrics_list, rows_list, time_list
 
@@ -196,8 +184,6 @@ def handle_args():
     # Arguments for data generation
     parser.add_argument("-s", "--scale", help="The scale for the files, default=1000 for iot and cpu, default=100 for devops")
     parser.add_argument("-e", "--seed", help="The seed for data generation, same data across all formats, default=123")
-    #parser.add_argument("--timestamp_start", help="Data start, default=2025-05-01T00:00:00Z")
-    #parser.add_argument("--timestamp_stop", help="Data stop, default=2025-05-02T00:00:00Z")
 
     args = parser.parse_args()
 
@@ -216,13 +202,6 @@ def handle_args():
     args.scale = fix_args({"scale": args.scale})
 
     args.seed = fix_args({"seed": args.seed})
-    
-    # Checks if the timestamps exists and they look correct
-    #if args.timestamp_start is None or not re.findall(r"\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ", args.timestamp_start):
-    #    args.timestamp_start = "2025-05-01T00:00:00Z"
-
-    #if args.timestamp_stop is None or not re.findall(r"\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ", args.timestamp_stop):
-    #    args.timestamp_stop = "2025-05-02T00:00:00Z"
 
     return args
 
@@ -302,22 +281,27 @@ def main():
     db_runs_dict = {}
     file_number = 0
 
-    timestamps = {"0": ["2025-05-01T00:00:00Z", "2025-05-01T23:59:59Z"], 
-                  "1": ["2025-05-02T00:00:00Z", "2025-05-02T23:59:59Z"], 
-                  "2": ["2025-05-03T00:00:00Z", "2025-05-03T23:59:59Z"], 
-                  "3": ["2025-05-04T00:00:00Z", "2025-05-04T23:59:59Z"], 
-                  "4": ["2025-05-05T00:00:00Z", "2025-05-05T23:59:59Z"]}
+    timestamps = {}
 
+    # Creating the different timestamps for use in files
+    datestamp = datetime.datetime(2025, 5, 1)
+
+    for i in range(args.runs):
+        date_str = datestamp.__str__().split(" ")[0]
+        timestamps[str(i)] = [date_str + "T00:00:00Z", date_str + "T23:59:59Z"]
+
+        datestamp += datetime.timedelta(days=1)
+
+    # Running for each file the number of set runs
     for test_file in db_setup[args.format]["test_files"]:
-    #for run in range(args.runs):
+        print("Running with " + test_file)
+
         for run in range(args.runs):
             print("Run number: " + str(run+1))
             # Generating the data
             generate_data(main_file_path, file_name[file_number], args.format, args.scale, args.seed, timestamps, run)
 
             # Runs the process for all files
-            #for test_file in db_setup[args.format]["test_files"]:
-        
             totals, metrics_list, rows_list, time_list = load_data(main_file_path, db_setup[args.format]["db_engine"], test_file, db_setup[args.format]["extra_commands"], args.workers, run)
             if run == 0:
                 db_runs_dict[file_name[file_number]] = {"time_run": time_list, "metrics": metrics_list, "total_metrics": totals[0], "rows": rows_list, "total_rows": totals[1]}
@@ -325,6 +309,8 @@ def main():
                 db_runs_dict[file_name[file_number]]["time_run"].extend(time_list)
                 db_runs_dict[file_name[file_number]]["metrics"].extend(metrics_list)
                 db_runs_dict[file_name[file_number]]["rows"].extend(rows_list)
+        
+        print("All " + str(args.runs)+ " runs completed")
         file_number += 1
 
     avg_dict = create_averages(db_runs_dict)
