@@ -5,7 +5,7 @@ import pathlib
 import json
 import argparse
 
-def generate_data(main_file_path, file_name, db_format, scale, seed, time_start, time_stop, run):
+def generate_data(main_file_path, file_name, db_format, scale, seed, timestamps, run):
     """
     Generates files using tsbs_generate
 
@@ -27,7 +27,7 @@ def generate_data(main_file_path, file_name, db_format, scale, seed, time_start,
     """
 
     # The use cases for the files
-    use_case = ["devops", "iot", "cpu-only"]
+    use_case = {"devops": "devops", "iot": "iot", "cpu_only": "cpu-only"}
 
     run_path = main_file_path + "bin/tsbs_generate_data"
     
@@ -37,22 +37,21 @@ def generate_data(main_file_path, file_name, db_format, scale, seed, time_start,
 
     print("Generating data for " + db_format + ":")
 
-    for case in use_case:
-        # Devops data are 10x the size of the others, so need to shrink
-        if case == "devops":
-            new_scale = scale//10
-        else:
-            new_scale = scale
+    # Devops data are 10x the size of the others, so need to shrink
+    if use_case[file_name] == "devops":
+        new_scale = scale//10
+    else:
+        new_scale = scale
 
-        full_file_path = file_path+db_format+"_"+file_name[file_number-1]+"_"+run+".gz"
+    full_file_path = file_path + db_format + "_" + file_name[file_number-1] + "_" + str(run) + ".gz"
 
-        print(str(file_number)+": "+full_file_path)
-        
-        full_command = run_path + " --use-case="+case + " --format="+db_format + " --seed="+str(seed) + " --scale="+str(new_scale) + " --timestamp-start="+time_start + " --timestamp-end="+time_stop + " --log-interval=10s" + " | gzip > " + full_file_path
+    print(str(file_number)+": "+full_file_path)
+    
+    full_command = run_path + " --use-case="+file_name + " --format="+db_format + " --seed="+str(seed) + " --scale="+str(new_scale) + " --timestamp-start="+timestamps[str(run)][0] + " --timestamp-end="+timestamps[str(run)][0] + " --log-interval=10s" + " | gzip > " + full_file_path
 
-        subprocess.run(full_command, shell=True)
+    subprocess.run(full_command, shell=True)
 
-        file_number += 1
+    file_number += 1
 
 def load_data(main_file_path, db_engine, test_file, extra_commands, workers, run):
     """
@@ -90,7 +89,7 @@ def load_data(main_file_path, db_engine, test_file, extra_commands, workers, run
     run_path = main_file_path + "bin/tsbs_load_" + db_engine
 
     #The path to your folder for storing tsbs generated load files
-    file_path = "/tmp/" + test_file + "_" + run +".gz"
+    file_path = "/tmp/" + test_file + "_" + str(run) +".gz"
     
     full_command = "cat " + file_path + " | gunzip | " + run_path + " --workers " + str(workers)
     for command in extra_commands:
@@ -203,8 +202,8 @@ def handle_args():
     # Arguments for data generation
     parser.add_argument("-s", "--scale", help="The scale for the files, default=1000 for iot and cpu, default=100 for devops")
     parser.add_argument("-e", "--seed", help="The seed for data generation, same data across all formats, default=123")
-    parser.add_argument("--timestamp_start", help="Data start, default=2025-05-01T00:00:00Z")
-    parser.add_argument("--timestamp_stop", help="Data stop, default=2025-05-02T00:00:00Z")
+    #parser.add_argument("--timestamp_start", help="Data start, default=2025-05-01T00:00:00Z")
+    #parser.add_argument("--timestamp_stop", help="Data stop, default=2025-05-02T00:00:00Z")
 
     args = parser.parse_args()
 
@@ -223,13 +222,13 @@ def handle_args():
     args.scale = fix_args({"scale": args.scale})
 
     args.seed = fix_args({"seed": args.seed})
-
+    
     # Checks if the timestamps exists and they look correct
-    if args.timestamp_start is None or not re.findall(r"\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ", args.timestamp_start):
-        args.timestamp_start = "2025-05-01T00:00:00Z"
+    #if args.timestamp_start is None or not re.findall(r"\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ", args.timestamp_start):
+    #    args.timestamp_start = "2025-05-01T00:00:00Z"
 
-    if args.timestamp_stop is None or not re.findall(r"\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ", args.timestamp_stop):
-        args.timestamp_stop = "2025-05-02T00:00:00Z"
+    #if args.timestamp_stop is None or not re.findall(r"\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ", args.timestamp_stop):
+    #    args.timestamp_stop = "2025-05-02T00:00:00Z"
 
     return args
 
@@ -309,13 +308,17 @@ def main():
     db_runs_dict = {}
     file_number = 0
 
+    timestamps = {"0": ["2025-05-01T00:00:00Z", "2025-05-01T23:59:59Z"], 
+                  "1": ["2025-05-02T00:00:00Z", "2025-05-02T23:59:59Z"], 
+                  "2": ["2025-05-03T00:00:00Z", "2025-05-03T23:59:59Z"], 
+                  "3": ["2025-05-04T00:00:00Z", "2025-05-04T23:59:59Z"], 
+                  "4": ["2025-05-05T00:00:00Z", "2025-05-05T23:59:59Z"]}
+
     for test_file in db_setup[args.format]["test_files"]:
     #for run in range(args.runs):
         for run in range(args.runs):
             # Generating the data
-            generate_data(main_file_path, file_name, args.format, args.scale, args.seed, args.timestamp_start, args.timestamp_stop, run)
-
-            
+            generate_data(main_file_path, file_name[file_number], args.format, args.scale, args.seed, timestamps, run)
 
             # Runs the process for all files
             #for test_file in db_setup[args.format]["test_files"]:
