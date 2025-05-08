@@ -94,20 +94,21 @@ def load_data(main_file_path, db_engine, test_file, extra_commands, workers, run
     metrics_list = []
     rows_list = []
     time_list = []
+    extracted_floats = []
+    totals = []
 
     print("Loading data for " + db_engine + " with file " + file_path + ":")
 
     output = subprocess.run(full_command, shell=True, capture_output=True, text=True)
 
+    # Checks if there has been any error in loading with tsbs,
+    # and prints the error and exits the program
     for line in output.stderr.strip().split("\n"):
         if re.findall(r'panic', line, re.IGNORECASE):
             print(output.stderr)
             sys.exit("Database error!")
 
     output_lines = output.stdout.strip().split("\n")
-
-    extracted_floats = []
-    totals = []
 
     for line in output_lines:
         if "(" in line and ")" in line:                
