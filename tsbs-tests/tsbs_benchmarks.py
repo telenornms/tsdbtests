@@ -100,6 +100,8 @@ def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers
     rows_list = []
     time_list = []
 
+    questdb_tables = ["cpu", "diagnostics", "disk", "diskio", "kernel", "mem", "net", "nginx", "postgresl", "readings", "redis"]
+
     print("Loading data for " + db_engine + " with file " + file_path + ":")
 
     for i in range(runs):
@@ -143,6 +145,11 @@ def load_data(main_file_path, db_engine, test_file, extra_commands = [], workers
         metrics_list.append(int(round(float(extracted_floats[0]))))
         rows_list.append(int(round(float(extracted_floats[1]))))
         time_list.append(round(float(time_match[0]), 2))
+
+        # Runs a little bobby tables on the questdb database to maintain speed and keep RAM low-ish
+        if db_engine == "questdb":
+            for table in questdb_tables:
+                subprocess.run('curl -G --data-urlencode "query=DROP TABLE IF EXISTS ' + table + '" http://localhost:9000/exec', capture_output=True, shell=True)
 
     print("All " + str(runs)+ " runs completed")
 
@@ -210,26 +217,15 @@ def handle_args():
         if args.admin_db_name is None or args.password is None:
             sys.exit("TimeScale needs --admin_db_name and --password")
 
-    if args.workers is None or args.workers <= 0:
-        args.workers = 4
-    else:
-        args.workers = fix_args({"workers": args.workers})
+    args.workers = fix_args({"workers": args.workers})
 
-    if args.runs is None or args.runs <= 0:
-        args.runs = 5
-    else:
-        args.runs = fix_args({"runs": args.runs})
+    args.runs = fix_args({"runs": args.runs})
 
-    if args.scale is None or args.scale <= 0:
-        args.scale = 1000
-    else:
-        args.scale = fix_args({"scale": args.scale})
+    args.scale = fix_args({"scale": args.scale})
 
-    if args.seed is None or args.seed <= 0:
-        args.seed = 123
-    else:
-        args.seed = fix_args({"seed": args.seed})
+    args.seed = fix_args({"seed": args.seed})
 
+    # Checks if the timestamps exists and they look correct
     if args.timestamp_start is None or not re.findall(r"\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ", args.timestamp_start):
         args.timestamp_start = "2025-05-01T00:00:00Z"
 
@@ -239,9 +235,32 @@ def handle_args():
     return args
 
 def fix_args(argument_dict):
+    """
+    Handles bad inputs on the int values and sets them to default values if not fixable
+
+    Parameters:
+        argument_dict : dict
+            A dict with the name of the argparse argument and its value
+    
+    Returns:
+        argument : int
+            Returns the fixed argument for the integers
+    """
+
     try:
         argument = int(list(argument_dict.values())[0])
     except:
+        match list(argument_dict.keys())[0]:
+            case "workers":
+                argument = 4
+            case "runs":
+                argument = 5
+            case "scale":
+                argument = 1000
+            case "seed":
+                argument = 123
+
+    if argument <= 0:
         match list(argument_dict.keys())[0]:
             case "workers":
                 argument = 4
