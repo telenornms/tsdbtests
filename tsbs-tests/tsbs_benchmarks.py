@@ -189,6 +189,7 @@ def handle_args():
     # Arguments for data generation
     parser.add_argument("-s", "--scale", help="The scale for the files, default=1000 for iot and cpu, default=100 for devops", type=int)
     parser.add_argument("-e", "--seed", help="The seed for data generation, same data across all formats, default=123", type=int)
+    parser.add_argument("-t", "--time", help="The start time for the data generation, format YYYY-MM", type=str, required=True)
 
     args = parser.parse_args()
 
@@ -207,6 +208,9 @@ def handle_args():
     args.scale = fix_args({"scale": args.scale})
 
     args.seed = fix_args({"seed": args.seed})
+
+    if not re.findall(r"\d\d\d\d-\d\d", args.time, re.IGNORECASE):
+        args.time = "2025-01"
 
     return args
 
@@ -286,8 +290,10 @@ def main():
 
     timestamps = {}
 
+    year_month_list = list(map(int, args.time.split("-")))
+
     # Creating the different timestamps for use in files
-    datestamp = datetime.datetime(2025, 4, 1)
+    datestamp = datetime.datetime(year_month_list[0], year_month_list[1], 1)
     start_date = datestamp.__str__().split(" ")[0]
 
     for i in range(args.runs*2):
