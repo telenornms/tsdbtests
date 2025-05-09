@@ -226,26 +226,24 @@ def fix_args(argument_dict):
     try:
         argument = int(list(argument_dict.values())[0])
     except:
-        match list(argument_dict.keys())[0]:
-            case "workers":
-                argument = 4
-            case "runs":
-                argument = 5
-            case "scale":
-                argument = 1000
-            case "seed":
-                argument = 123
+        if list(argument_dict.keys())[0] == "workers":
+            argument = 4
+        elif list(argument_dict.keys())[0] == "runs":
+            argument = 5
+        elif list(argument_dict.keys())[0] == "scale":
+            argument = 1000
+        elif list(argument_dict.keys())[0] == "seed":
+            argument = 123
 
     if argument <= 0:
-        match list(argument_dict.keys())[0]:
-            case "workers":
-                argument = 4
-            case "runs":
-                argument = 5
-            case "scale":
-                argument = 1000
-            case "seed":
-                argument = 123
+        if list(argument_dict.keys())[0] == "workers":
+            argument = 4
+        elif list(argument_dict.keys())[0] == "runs":
+            argument = 5
+        elif list(argument_dict.keys())[0] == "scale":
+            argument = 1000
+        elif list(argument_dict.keys())[0] == "seed":
+            argument = 123
 
     return argument
 
@@ -324,7 +322,7 @@ def main():
 
     avg_dict["metadata"] = {"db_engine": args.format, "scale": args.scale, "seed": args.seed, "workers": args.workers, "runs": args.runs, "start_date": start_date}
     
-    output_file = "tsbs_" + args.format + "_" + str(args.scale) + ".json"
+    output_file = "tsbs_" + args.format + "_s" + str(args.scale) + "_w" + str(args.workers) + ".json"
     
     with open(output_file, "w") as f:
         json.dump(avg_dict, f, indent=4)
