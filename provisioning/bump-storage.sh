@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 pvcreate /dev/sdb
 vgextend vg0 /dev/sdb
 
