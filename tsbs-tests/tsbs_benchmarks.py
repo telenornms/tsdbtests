@@ -291,6 +291,7 @@ def main():
 
     # Creating the different timestamps for use in files
     datestamp = datetime.datetime(2025, 4, 1)
+    start_date = datestamp.__str__().split(" ")[0]
 
     for i in range(args.runs*2):
         date_str = datestamp.__str__().split(" ")[0]
@@ -321,7 +322,7 @@ def main():
 
     avg_dict = create_averages(db_runs_dict)
 
-    avg_dict["metadata"] = {"db_engine": args.format, "scale": args.scale, "seed": args.seed, "workers": args.workers, "runs": args.runs}
+    avg_dict["metadata"] = {"db_engine": args.format, "scale": args.scale, "seed": args.seed, "workers": args.workers, "runs": args.runs, "start_date": start_date}
     
     output_file = "tsbs_" + args.format + "_" + str(args.scale) + ".json"
     
