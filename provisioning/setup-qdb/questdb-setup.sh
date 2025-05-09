@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 echo "configuring system file limits for questdb"
 
 cp ./98-fs-file-max.conf ./98-vm-max-map-count.conf /etc/sysctl.d/
