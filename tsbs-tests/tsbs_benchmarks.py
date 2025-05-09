@@ -296,9 +296,6 @@ def main():
     datestamp = datetime.datetime(year_month_list[0], year_month_list[1], 1)
     start_date = datestamp.__str__().split(" ")[0]
 
-    print(start_date)
-    sys.exit(0)
-
     for i in range(args.runs*2):
         date_str = datestamp.__str__().split(" ")[0]
         timestamps[str(i)] = [date_str + "T00:00:00Z", date_str + "T23:59:59Z"]
