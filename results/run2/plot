@@ -1,0 +1,36 @@
+reset
+set terminal svg size 1000,800 enhanced font 'Helvetica,12' 
+set output 'benchmark.svg'
+
+set title "TSDBs ingest performance"
+
+load 'pastel1.pal'
+
+set style data histogram
+set style histogram rowstacked
+#set style fill solid border -1
+set style fill solid
+set boxwidth 0.8
+set key outside
+set key reverse Left
+
+set ylabel "Rows ingested/s"
+set xlabel "Tsbs test type"
+
+set datafile separator whitespace
+
+unset border
+set style histogram clustered gap 1
+
+set ytics nomirror
+set grid ytics
+set xtics nomirror
+
+# thousand separator values
+set format y "%\'g" 
+
+# horizontal bars
+set style data histograms
+
+# read data into arrays
+plot for [COL=2:5] 'averages.tsv' using COL:xtic(1) title columnheader
