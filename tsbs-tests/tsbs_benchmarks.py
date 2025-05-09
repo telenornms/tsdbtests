@@ -291,12 +291,13 @@ def main():
     timestamps = {}
 
     year_month_list = list(map(int, args.time.split("-")))
-    print(year_month_list)
-    sys.exit(0)
 
     # Creating the different timestamps for use in files
-    datestamp = datetime.datetime(2025, 4, 1)
+    datestamp = datetime.datetime(year_month_list[0], year_month_list[1], 1)
     start_date = datestamp.__str__().split(" ")[0]
+
+    print(start_date)
+    sys.exit(0)
 
     for i in range(args.runs*2):
         date_str = datestamp.__str__().split(" ")[0]
