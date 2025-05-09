@@ -28,7 +28,7 @@ def generate_data(main_file_path, file_name, db_format, scale, seed, timestamps,
     """
 
     # The use cases for the files
-    use_case = {"devops": "devops", "iot": "iot", "cpu_only": "cpu-only"}
+    use_case = {"devops": "devops", "iot": "iot"}
 
     run_path = main_file_path + "bin/tsbs_generate_data"
     
@@ -260,22 +260,22 @@ def main():
     db_setup = {
     "influx": {
         "db_engine": "influx", 
-        "test_files": ["influx_devops", "influx_iot", "influx_cpu_only"], 
+        "test_files": ["influx_devops", "influx_iot"], 
         "extra_commands": [" --auth-token ", args.auth_token]
         }, 
      "questdb": {
          "db_engine": "questdb", 
-         "test_files": ["questdb_devops", "questdb_iot", "questdb_cpu_only"],
+         "test_files": ["questdb_devops", "questdb_iot"],
          "extra_commands": []
          },
      "timescaledb": {
          "db_engine": "timescaledb",
-         "test_files": ["timescaledb_devops", "timescaledb_iot", "timescaledb_cpu_only"],
+         "test_files": ["timescaledb_devops", "timescaledb_iot"],
          "extra_commands": [" --admin-db-name ", args.admin_db_name, " --pass ", args.password]
          },
      "victoriametrics": {
          "db_engine": "victoriametrics",
-         "test_files": ["victoriametrics_devops", "victoriametrics_iot", "victoriametrics_cpu_only"],
+         "test_files": ["victoriametrics_devops", "victoriametrics_iot"],
          "extra_commands": []
          }
     }
@@ -284,7 +284,7 @@ def main():
     # Default is home folder
     main_file_path = str(pathlib.Path.home()) + "/tsbs/"
     
-    file_name = ["devops", "iot", "cpu_only"]
+    file_name = ["devops", "iot"]
 
     db_runs_dict = {}
     file_number = 0
