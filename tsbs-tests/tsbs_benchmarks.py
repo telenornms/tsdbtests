@@ -6,7 +6,7 @@ import json
 import argparse
 import datetime
 
-def generate_data(main_file_path, file_name, db_format, scale, seed, timestamps, run):
+def generate_data(main_file_path, file_name, db_format, scale, seed, timestamps, run, max_runs, file_number):
     """
     Generates files using tsbs_generate
 
@@ -27,15 +27,12 @@ def generate_data(main_file_path, file_name, db_format, scale, seed, timestamps,
             The stopping timestamp for the generated data
     """
 
-    # The use cases for the files
-    use_case = {"devops": "devops", "iot": "iot"}
-
     run_path = main_file_path + "bin/tsbs_generate_data"
     
     file_path = "/tmp/"
 
     # Devops data are 10x the size of the others, so need to shrink
-    if use_case[file_name] == "devops":
+    if file_name == "devops":
         new_scale = scale//10
         new_scale = new_scale if new_scale >= 1 else 1
     else:
@@ -45,7 +42,7 @@ def generate_data(main_file_path, file_name, db_format, scale, seed, timestamps,
 
     print("Creating file: " + full_file_path)
 
-    full_command = run_path + " --use-case="+use_case[file_name] + " --format="+db_format + " --seed="+str(seed) + " --scale="+str(new_scale) + " --timestamp-start="+timestamps[str(run)][0] + " --timestamp-end="+timestamps[str(run)][1] + " --log-interval=10s" + " | gzip > " + full_file_path
+    full_command = run_path + " --use-case="+file_name + " --format="+db_format + " --seed="+str(seed) + " --scale="+str(new_scale) + " --timestamp-start="+timestamps[str(run+max_runs*file_number)][0] + " --timestamp-end="+timestamps[str(run+max_runs*file_number)][1] + " --log-interval=10s" + " | gzip > " + full_file_path
 
     subprocess.run(full_command, shell=True)
 
@@ -284,7 +281,8 @@ def main():
     # Default is home folder
     main_file_path = str(pathlib.Path.home()) + "/tsbs/"
     
-    file_name = ["devops", "iot"]
+    # The use cases for the files
+    use_case_list = ["devops", "iot"]
 
     db_runs_dict = {}
     file_number = 0
@@ -292,9 +290,9 @@ def main():
     timestamps = {}
 
     # Creating the different timestamps for use in files
-    datestamp = datetime.datetime(2025, 5, 1)
+    datestamp = datetime.datetime(2025, 4, 1)
 
-    for i in range(args.runs):
+    for i in range(args.runs*2):
         date_str = datestamp.__str__().split(" ")[0]
         timestamps[str(i)] = [date_str + "T00:00:00Z", date_str + "T23:59:59Z"]
 
@@ -306,17 +304,17 @@ def main():
 
         for run in range(args.runs):
             print("Run number: " + str(run+1))
-            # Generating the data
-            generate_data(main_file_path, file_name[file_number], args.format, args.scale, args.seed, timestamps, run)
+            # Generating the data through TSBS
+            generate_data(main_file_path, use_case_list[file_number], args.format, args.scale, args.seed, timestamps, run, args.runs, file_number)
 
-            # Runs the process for all files
+            # Loading the data through TSBS
             totals, metrics_list, rows_list, time_list = load_data(main_file_path, db_setup[args.format]["db_engine"], test_file, db_setup[args.format]["extra_commands"], args.workers, run)
             if run == 0:
-                db_runs_dict[file_name[file_number]] = {"time_run": time_list, "metrics": metrics_list, "total_metrics": totals[0], "rows": rows_list, "total_rows": totals[1]}
+                db_runs_dict[use_case_list[file_number]] = {"time_run": time_list, "metrics": metrics_list, "total_metrics": totals[0], "rows": rows_list, "total_rows": totals[1]}
             else:
-                db_runs_dict[file_name[file_number]]["time_run"].extend(time_list)
-                db_runs_dict[file_name[file_number]]["metrics"].extend(metrics_list)
-                db_runs_dict[file_name[file_number]]["rows"].extend(rows_list)
+                db_runs_dict[use_case_list[file_number]]["time_run"].extend(time_list)
+                db_runs_dict[use_case_list[file_number]]["metrics"].extend(metrics_list)
+                db_runs_dict[use_case_list[file_number]]["rows"].extend(rows_list)
         
         print("All " + str(args.runs)+ " runs completed\n")
         file_number += 1
