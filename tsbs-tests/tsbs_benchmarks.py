@@ -277,9 +277,8 @@ def main():
          }
     }
 
-    # The file path for where you stored tsbs
-    # Default is home folder
-    main_file_path = str(pathlib.Path.home()) + "/tsbs/"
+    # The file path for where tsbs is stored, default is in the project folder
+    main_file_path = str(pathlib.Path.cwd()) + "/../tsbs/"
     
     # The use cases for the files
     use_case_list = ["devops", "iot"]
