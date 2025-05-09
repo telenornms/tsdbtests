@@ -46,7 +46,7 @@ def generate_data(main_file_path, file_name, db_format, scale, seed, timestamps,
 
     subprocess.run(full_command, shell=True)
 
-def load_data(main_file_path, db_engine, test_file, extra_commands, workers, run):
+def load_data(main_file_path, db_engine, test_file, extra_commands, workers, batch, run):
     """
     Loads the data into the database using tsbs_load_<db_engine>
     and gets the number of metrics per sec, rows per sec, overall time per run
@@ -84,7 +84,7 @@ def load_data(main_file_path, db_engine, test_file, extra_commands, workers, run
     #The path to your folder for storing tsbs generated load files
     file_path = "/tmp/" + test_file + "_" + str(run+1) +".gz"
     
-    full_command = "cat " + file_path + " | gunzip | " + run_path + " --workers " + str(workers)
+    full_command = "cat " + file_path + " | gunzip | " + run_path + " --workers " + str(workers) + " --batch-size " + str(batch)
     for command in extra_commands:
         full_command += command
 
@@ -185,6 +185,7 @@ def handle_args():
     parser.add_argument("-a", "--auth_token", help="The token for the database/user, REQUIRED for Influx", type=str)
     parser.add_argument("-w", "--workers", help="The number of simultanious processes to run the database load, default=4", type=int)
     parser.add_argument("-r", "--runs", help="The number of runs per file, default=5", type=int)
+    parser.add_argument("-b", "--batch", help="Number of items to batch together in a single run, default=10000", type=int)
     
     # Arguments for data generation
     parser.add_argument("-s", "--scale", help="The scale for the files, default=1000 for iot and cpu, default=100 for devops", type=int)
@@ -209,6 +210,8 @@ def handle_args():
 
     args.seed = fix_args({"seed": args.seed})
 
+    args.batch = fix_args({"batch": args.batch})
+
     if not re.findall(r"\d\d\d\d-\d\d", args.time, re.IGNORECASE):
         args.time = "2025-01"
 
@@ -229,6 +232,8 @@ def fix_args(argument_dict):
 
     try:
         argument = int(list(argument_dict.values())[0])
+        if argument <= 0:
+            raise Exception("No numbers below 0")
     except:
         if list(argument_dict.keys())[0] == "workers":
             argument = 4
@@ -238,17 +243,9 @@ def fix_args(argument_dict):
             argument = 1000
         elif list(argument_dict.keys())[0] == "seed":
             argument = 123
-
-    if argument <= 0:
-        if list(argument_dict.keys())[0] == "workers":
-            argument = 4
-        elif list(argument_dict.keys())[0] == "runs":
-            argument = 5
-        elif list(argument_dict.keys())[0] == "scale":
-            argument = 1000
-        elif list(argument_dict.keys())[0] == "seed":
-            argument = 123
-
+        elif list(argument_dict.keys())[0] == "batch":
+            argument = 10000
+            
     return argument
 
 def main():
@@ -312,7 +309,7 @@ def main():
             generate_data(main_file_path, use_case_list[file_number], args.format, args.scale, args.seed, timestamps, run, args.runs, file_number)
 
             # Loading the data through TSBS
-            totals, metrics_list, rows_list, time_list = load_data(main_file_path, db_setup[args.format]["db_engine"], test_file, db_setup[args.format]["extra_commands"], args.workers, run)
+            totals, metrics_list, rows_list, time_list = load_data(main_file_path, db_setup[args.format]["db_engine"], test_file, db_setup[args.format]["extra_commands"], args.workers, args.batch, run)
             if run == 0:
                 db_runs_dict[use_case_list[file_number]] = {"time_run": time_list, "metrics": metrics_list, "total_metrics": totals[0], "rows": rows_list, "total_rows": totals[1]}
             else:
