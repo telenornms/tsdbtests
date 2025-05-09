@@ -1,0 +1,76 @@
+Influxdb
+Filesystem                    Size  Used Avail Use% Mounted on
+devtmpfs                      4.0M     0  4.0M   0% /dev
+tmpfs                         7.7G   41M  7.7G   1% /dev/shm
+tmpfs                         3.1G   63M  3.1G   2% /run
+efivarfs                      256K   30K  222K  12% /sys/firmware/efi/efivars
+/dev/mapper/vg0-root          7.0G  1.3G  5.8G  19% /
+/dev/mapper/vg0-usr           6.9G  3.1G  3.9G  45% /usr
+/dev/mapper/vg0-opt           1.1G  428M  609M  42% /opt
+/dev/sda2                     960M  388M  573M  41% /boot
+/dev/mapper/vg0-var            57G  1.6G   56G   3% /var
+/dev/sda1                    1022M  7.1M 1015M   1% /boot/efi
+/dev/mapper/vg0-carbonblack   2.0G  264M  1.6G  15% /opt/carbonblack
+/dev/mapper/vg0-nessus_agent  3.9G  1.4G  2.3G  37% /opt/nessus_agent
+/dev/mapper/vg0-tmp            16G  2.0G   15G  13% /tmp
+/dev/mapper/vg0-var--log       15G  248M   15G   2% /var/log
+/dev/mapper/vg0-home           16G  726M   16G   5% /home
+tmpfs                         1.6G     0  1.6G   0% /run/user/1243000049
+
+Questdb
+
+Filesystem                    Size  Used Avail Use% Mounted on
+devtmpfs                      4.0M     0  4.0M   0% /dev
+tmpfs                         7.7G   41M  7.7G   1% /dev/shm
+tmpfs                         3.1G  132M  3.0G   5% /run
+efivarfs                      256K   30K  222K  12% /sys/firmware/efi/efivars
+/dev/mapper/vg0-root          7.0G  1.3G  5.8G  19% /
+/dev/mapper/vg0-usr           6.9G  2.8G  4.2G  40% /usr
+/dev/mapper/vg0-opt           1.1G  430M  607M  42% /opt
+/dev/sda2                     960M  388M  573M  41% /boot
+/dev/mapper/vg0-carbonblack   2.0G  264M  1.6G  15% /opt/carbonblack
+/dev/mapper/vg0-nessus_agent  3.9G  1.4G  2.3G  37% /opt/nessus_agent
+/dev/sda1                    1022M  7.1M 1015M   1% /boot/efi
+/dev/mapper/vg0-tmp            16G  1.2G   15G   8% /tmp
+/dev/mapper/vg0-var            57G   19G   39G  33% /var
+/dev/mapper/vg0-home           66G  2.1G   64G   4% /home
+/dev/mapper/vg0-var--log       15G  275M   15G   2% /var/log
+tmpfs                         1.6G     0  1.6G   0% /run/user/1243000049
+
+Timescale
+Filesystem                    Size  Used Avail Use% Mounted on
+devtmpfs                      4.0M     0  4.0M   0% /dev
+tmpfs                         7.7G   42M  7.7G   1% /dev/shm
+tmpfs                         3.1G   39M  3.1G   2% /run
+efivarfs                      256K   30K  222K  12% /sys/firmware/efi/efivars
+/dev/mapper/vg0-root          7.0G  1.3G  5.8G  19% /
+/dev/mapper/vg0-usr           6.9G  2.6G  4.4G  38% /usr
+/dev/sda2                     960M  388M  573M  41% /boot
+/dev/sda1                    1022M  7.1M 1015M   1% /boot/efi
+/dev/mapper/vg0-opt           1.1G  427M  610M  42% /opt
+/dev/mapper/vg0-var            57G  3.8G   54G   7% /var
+/dev/mapper/vg0-carbonblack   2.0G  264M  1.6G  15% /opt/carbonblack
+/dev/mapper/vg0-nessus_agent  3.9G  1.4G  2.3G  37% /opt/nessus_agent
+/dev/mapper/vg0-tmp            16G  907M   16G   6% /tmp
+/dev/mapper/vg0-home           16G  600M   16G   4% /home
+/dev/mapper/vg0-var--log       15G  215M   15G   2% /var/log
+tmpfs                         1.6G     0  1.6G   0% /run/user/1243000049
+
+Victoriametrics
+Filesystem                    Size  Used Avail Use% Mounted on
+devtmpfs                      4.0M     0  4.0M   0% /dev
+tmpfs                         7.7G   41M  7.7G   1% /dev/shm
+tmpfs                         3.1G   52M  3.1G   2% /run
+efivarfs                      256K   30K  222K  12% /sys/firmware/efi/efivars
+/dev/mapper/vg0-root          7.0G  1.3G  5.8G  19% /
+/dev/mapper/vg0-usr           6.9G  2.6G  4.3G  38% /usr
+/dev/mapper/vg0-opt           1.1G  427M  610M  42% /opt
+/dev/mapper/vg0-var            57G  2.7G   55G   5% /var
+/dev/sda2                     960M  480M  481M  50% /boot
+/dev/sda1                    1022M  7.1M 1015M   1% /boot/efi
+/dev/mapper/vg0-tmp            16G  1.2G   15G   8% /tmp
+/dev/mapper/vg0-var--log       15G  247M   15G   2% /var/log
+/dev/mapper/vg0-nessus_agent  3.9G  1.4G  2.3G  37% /opt/nessus_agent
+/dev/mapper/vg0-carbonblack   2.0G  264M  1.6G  15% /opt/carbonblack
+/dev/mapper/vg0-home           16G  600M   16G   4% /home
+tmpfs                         1.6G     0  1.6G   0% /run/user/1243000049

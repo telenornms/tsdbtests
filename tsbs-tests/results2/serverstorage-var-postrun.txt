@@ -1,0 +1,15 @@
+Influx
+/dev/mapper/vg0-var            57G  1.6G   56G   3% /var
+/dev/mapper/vg0-var--log       15G  248M   15G   2% /var/log
+
+Quest
+/dev/mapper/vg0-var            57G   19G   39G  33% /var
+/dev/mapper/vg0-var--log       15G  275M   15G   2% /var/log
+
+Timescale
+/dev/mapper/vg0-var            57G  3.8G   54G   7% /var
+/dev/mapper/vg0-var--log       15G  215M   15G   2% /var/log
+
+Victoriametrics
+/dev/mapper/vg0-var            57G  2.7G   55G   5% /var
+/dev/mapper/vg0-var--log       15G  247M   15G   2% /var/log

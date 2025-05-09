@@ -1,0 +1,4 @@
+"TestType" "influx" "questdb" "timescaledb" "victoriametrics"
+"devops" 110992 249833 255724 219156
+"iot" 149898 408128 334013 342122
+"cpu only" 118869 511140 319816 237677
