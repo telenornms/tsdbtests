@@ -322,7 +322,7 @@ def main():
 
     avg_dict["metadata"] = {"db_engine": args.format, "scale": args.scale, "seed": args.seed, "workers": args.workers, "runs": args.runs, "start_date": start_date}
     
-    output_file = "tsbs_" + args.format + "_" + str(args.scale) + ".json"
+    output_file = "tsbs_" + args.format + "_" + str(args.scale) + "_" + str(args.workers) + ".json"
     
     with open(output_file, "w") as f:
         json.dump(avg_dict, f, indent=4)
