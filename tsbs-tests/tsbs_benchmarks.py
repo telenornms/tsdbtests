@@ -6,11 +6,11 @@ import json
 import argparse
 import datetime
 
-def generate_data(path_dict, args, timestamps, run, file_number):
+def generate_data(path_dict, args, timestamps, file_number, run):
     """
     Generates files using tsbs_generate
 
-    Arguments:
+    Parameters:
         path_dict : dict
             A dict with the path to TSBS, and the use_case
         args : argparse.Namespace
@@ -57,15 +57,15 @@ def load_data(path_dict, args, db_setup, test_file, run):
     and gets the number of metrics per sec, rows per sec, overall time per run
     and total number of metrics and rows
 
-    Arguments:
+    Parameters:
         path_dict : dict
             A dict with the path to TSBS, and the use_case
-        db_engine : str
-            The type of database, influx, questdb, timescaledb or victoriametrics
-        test_file : str
-            The string path for the file to be read into the database
         args : argparse.Namespace
             The list of inline arguments given to the program 
+        db_setup : dict
+            The dict with all metadata about the selected database
+        test_file : str
+            The string path for the file to be read into the database
         run : int
             The current run of the use case
 
@@ -111,7 +111,7 @@ def handle_load(output):
     """
     Takes the output from the tsbs_load and returns the requested metrics
 
-    Arguments:
+    Parameters:
         output : str
             The full output from the completed run
     
@@ -125,12 +125,13 @@ def handle_load(output):
         time_list : list
             The list of time for each run, rounded to 2 decimals
     """
-    
+
     metrics_list = []
     rows_list = []
     time_list = []
     extracted_floats = []
     totals = []
+    time_match = ""
 
     output_lines = output.stdout.strip().split("\n")
 
@@ -163,12 +164,11 @@ def handle_load(output):
 
     return totals, metrics_list, rows_list, time_list
 
-
 def create_averages(db_runs_dict):
     """
     Creates the averages for each file per metrics, rows and tiem
 
-    Arguments:
+    Parameters:
         db_runs_dict : dict
             A dictionary containing all the data about all the runs; time/run, metrics/sec, rows/sec,
             and total metrics and rows
@@ -191,11 +191,63 @@ def create_averages(db_runs_dict):
 
     return avg_runs_dict
 
+def run_tsbs(path_dict, args, db_setup, timestamps):
+    """
+    Runs the tsbs scripts
+
+    Parameters:
+        path_dict : dict
+            A dict with the path to TSBS, and the use_case
+        args : argparse.Namespace
+            The list of inline arguments given to the program
+        db_setup : dict
+            The dict with all metadata about the selected database
+        timestamps : dict
+            A dict with the timestamps
+
+    Returns:
+        db_runs_dict : dict
+            A dictionary containing all the data about all the runs; time/run, metrics/sec, rows/sec,
+            and total metrics and rows
+    """
+
+    db_runs_dict = {}
+    file_number = 0
+
+    # Running for each file the number of set runs
+    for test_file in db_setup[args.format]["test_files"]:
+        print("Running with " + test_file)
+
+        for run in range(args.runs):
+            print("Run number: " + str(run+1))
+            # Generating the data through TSBS
+            generate_data(path_dict, args, timestamps, file_number, run)
+
+            # Loading the data through TSBS
+            totals, metrics_list, rows_list, time_list = load_data(path_dict, args, db_setup[args.format], test_file, run)
+            if run == 0:
+                db_runs_dict[path_dict["use_case"][file_number]] = {
+                    "time_run": time_list, 
+                    "metrics": metrics_list, 
+                    "total_metrics": totals[0], 
+                    "rows": rows_list, 
+                    "total_rows": totals[1]
+                }
+            else:
+                db_runs_dict[path_dict["use_case"][file_number]]["time_run"].extend(time_list)
+                db_runs_dict[path_dict["use_case"][file_number]]["metrics"].extend(metrics_list)
+                db_runs_dict[path_dict["use_case"][file_number]]["rows"].extend(rows_list)
+
+        print("All " + str(args.runs)+ " runs completed\n")
+        file_number += 1
+
+    return db_runs_dict
+
 def create_timestamps(args):
     """
     Creates a dict with the timestamps for each run
 
-    Arguments:
+    Parameters:
         args : argparse.Namespace
             The inline arguments for the file
 
@@ -214,10 +266,10 @@ def create_timestamps(args):
 
     # Creating the different timestamps for use in files
     datestamp = datetime.datetime(year_month_list[0], year_month_list[1], 1)
-    start_date = str(datestamp).split(" ")[0]
+    start_date = str(datestamp).split(" ", maxsplit=1)[0]
 
     for i in range(args.runs*2):
-        date_str = str(datestamp).split(" ")[0]
+        date_str = str(datestamp).split(" ", maxsplit=1)[0]
         timestamps[str(i)] = [date_str + "T00:00:00Z", date_str + "T23:59:59Z"]
 
         datestamp += datetime.timedelta(days=1)
@@ -278,7 +330,7 @@ def fix_args(argument_dict):
     """
     Handles bad inputs on the int values and sets them to default values if not fixable
 
-    Arguments:
+    Parameters:
         argument_dict : dict
             A dict with the name of the argparse argument and its value
     
@@ -291,7 +343,7 @@ def fix_args(argument_dict):
         argument = int(list(argument_dict.values())[0])
         if argument <= 0:
             raise ValueError("No numbers below 0")
-    except:
+    except ValueError:
         if list(argument_dict.keys())[0] == "workers":
             argument = 4
         elif list(argument_dict.keys())[0] == "runs":
@@ -344,35 +396,7 @@ def main():
 
     start_date, timestamps = create_timestamps(args)
 
-    db_runs_dict = {}
-    file_number = 0
-
-    # Running for each file the number of set runs
-    for test_file in db_setup[args.format]["test_files"]:
-        print("Running with " + test_file)
-
-        for run in range(args.runs):
-            print("Run number: " + str(run+1))
-            # Generating the data through TSBS
-            generate_data(path_dict, args, timestamps, run, file_number)
-
-            # Loading the data through TSBS
-            totals, metrics_list, rows_list, time_list = load_data(path_dict, args, db_setup[args.format], test_file, run)
-            if run == 0:
-                db_runs_dict[path_dict["use_case"][file_number]] = {
-                    "time_run": time_list, 
-                    "metrics": metrics_list, 
-                    "total_metrics": totals[0], 
-                    "rows": rows_list, 
-                    "total_rows": totals[1]
-                }
-            else:
-                db_runs_dict[path_dict["use_case"][file_number]]["time_run"].extend(time_list)
-                db_runs_dict[path_dict["use_case"][file_number]]["metrics"].extend(metrics_list)
-                db_runs_dict[path_dict["use_case"][file_number]]["rows"].extend(rows_list)
-
-        print("All " + str(args.runs)+ " runs completed\n")
-        file_number += 1
+    db_runs_dict = run_tsbs(path_dict, args, db_setup, timestamps)
 
     avg_dict = create_averages(db_runs_dict)
 
