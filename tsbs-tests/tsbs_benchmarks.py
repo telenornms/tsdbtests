@@ -52,7 +52,7 @@ def generate_data(main_file_path, file_name, args, timestamps, run, file_number)
 
     full_command = run_path + use_case_str + format_str + seed_str + scale_str + t_start_str + t_stop_str + " --log-interval=10s" + " | gzip > " + full_file_path
 
-    subprocess.run(full_command, shell=True, check=True)
+    subprocess.run(full_command, shell=True, check=False)
 
 def load_data(main_file_path, db_setup, test_file, args, run):
     #load_data(main_file_path, db_engine, test_file, extra_commands, workers, batch, run):
@@ -112,7 +112,7 @@ def load_data(main_file_path, db_setup, test_file, args, run):
 
     print("Loading data for " + db_setup["db_engine"] + " with file " + file_path)
 
-    output = subprocess.run(full_command, shell=True, capture_output=True, text=True, check=True)
+    output = subprocess.run(full_command, shell=True, capture_output=True, text=True, check=False)
 
     # Checks if there has been any error in loading with tsbs,
     # and prints the error and exits the program
