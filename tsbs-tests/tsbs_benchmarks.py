@@ -6,53 +6,65 @@ import json
 import argparse
 import datetime
 
-def generate_data(main_file_path, file_name, db_format, scale, seed, timestamps, run, max_runs, file_number):
+def generate_data(main_file_path, file_name, args, timestamps, run, file_number):
+    #generate_data(main_file_path, file_name, db_format, scale, seed, timestamps, run, max_runs, file_number):
+    #generate_data(main_file_path, use_case_list[file_number], args.format, args.scale, args.seed, timestamps, run, args.runs, file_number)
+
     """
     Generates files using tsbs_generate
 
-    Parameters:
+    Arguments:
         main_file_path : str 
-            The home path for user + /tsbs
+            The home path for TSBS
         file_name : list
             The list of filenames to use, fixes for JSON
-        db_format : str
-            The type of database, influx, questdb, timescaledb or victoriametrics
-        scale : int
-            The number of different items for data generation
-        seed : int
-            The seed for generating data, identical data for identical seeds
-        time_start : str
-            The starting timestamp for the generated data
-        time_stop : str
-            The stopping timestamp for the generated data
+        args : argparse.Namespace
+            a
+        timestamps : dict
+            a
+        run : int
+            a
+        file_number : int
+            a
     """
 
     run_path = main_file_path + "bin/tsbs_generate_data"
-    
+
     file_path = "/tmp/"
 
     # Devops data are 10x the size of the others, so need to shrink
     if file_name == "devops":
-        new_scale = scale//10
+        new_scale = args.scale//10
         new_scale = new_scale if new_scale >= 1 else 1
     else:
-        new_scale = scale
+        new_scale = args.scale
 
-    full_file_path = file_path + db_format + "_" + file_name + "_" + str(run+1) + ".gz"
+    full_file_path = file_path + args.format + "_" + file_name + "_" + str(run+1) + ".gz"
+
+    use_case_str = " --use-case="+file_name
+    format_str = " --format="+args.format
+    seed_str = " --seed="+str(args.seed)
+    scale_str = " --scale="+str(new_scale)
+    t_start_str = " --timestamp-start="+timestamps[str(run+args.runs*file_number)][0]
+    t_stop_str = " --timestamp-end="+timestamps[str(run+args.runs*file_number)][1]
 
     print("Creating file: " + full_file_path)
 
-    full_command = run_path + " --use-case="+file_name + " --format="+db_format + " --seed="+str(seed) + " --scale="+str(new_scale) + " --timestamp-start="+timestamps[str(run+max_runs*file_number)][0] + " --timestamp-end="+timestamps[str(run+max_runs*file_number)][1] + " --log-interval=10s" + " | gzip > " + full_file_path
+    full_command = run_path + use_case_str + format_str + seed_str + scale_str + t_start_str + t_stop_str + " --log-interval=10s" + " | gzip > " + full_file_path
 
-    subprocess.run(full_command, shell=True)
+    subprocess.run(full_command, shell=True, check=True)
 
-def load_data(main_file_path, db_engine, test_file, extra_commands, workers, batch, run):
+def load_data(main_file_path, db_setup, test_file, args, run):
+    #load_data(main_file_path, db_engine, test_file, extra_commands, workers, batch, run):
+    #totals, metrics_list, rows_list, time_list = load_data(main_file_path, db_setup[args.format]["db_engine"], test_file, db_setup[args.format]["extra_commands"], args.workers, args.batch, run)
+    #totals, metrics_list, rows_list, time_list = load_data(main_file_path, db_setup[args.format], test_file, args, run)
+
     """
     Loads the data into the database using tsbs_load_<db_engine>
     and gets the number of metrics per sec, rows per sec, overall time per run
     and total number of metrics and rows
 
-    Parameters:
+    Arguments:
         main_file_path : str
             The home path for user + /tsbs
         db_engine : str
@@ -79,13 +91,17 @@ def load_data(main_file_path, db_engine, test_file, extra_commands, workers, bat
     """
 
     # The path to your tsbs/bin folder
-    run_path = main_file_path + "bin/tsbs_load_" + db_engine
+    run_path = main_file_path + "bin/tsbs_load_" + db_setup["db_engine"]
 
     #The path to your folder for storing tsbs generated load files
     file_path = "/tmp/" + test_file + "_" + str(run+1) +".gz"
-    
-    full_command = "cat " + file_path + " | gunzip | " + run_path + " --workers " + str(workers) + " --batch-size " + str(batch)
-    for command in extra_commands:
+
+    workers_str = " --workers " + str(args.workers)
+    batch_str = " --batch-size " + str(args.batch)
+
+    #full_command = "cat " + file_path + " | gunzip | " + run_path + " --workers " + str(workers) + " --batch-size " + str(batch)
+    full_command = "cat " + file_path + " | gunzip | " + run_path + workers_str + batch_str
+    for command in db_setup["extra_commands"]:
         full_command += command
 
     metrics_list = []
@@ -94,9 +110,9 @@ def load_data(main_file_path, db_engine, test_file, extra_commands, workers, bat
     extracted_floats = []
     totals = []
 
-    print("Loading data for " + db_engine + " with file " + file_path)
+    print("Loading data for " + db_setup["db_engine"] + " with file " + file_path)
 
-    output = subprocess.run(full_command, shell=True, capture_output=True, text=True)
+    output = subprocess.run(full_command, shell=True, capture_output=True, text=True, check=True)
 
     # Checks if there has been any error in loading with tsbs,
     # and prints the error and exits the program
@@ -144,7 +160,7 @@ def create_averages(db_runs_dict):
     """
     Creates the averages for each file per metrics, rows and tiem
 
-    Parameters:
+    Arguments:
         db_runs_dict : dict
             A dictionary containing all the data about all the runs; time/run, metrics/sec, rows/sec,
             and total metrics and rows
@@ -166,6 +182,39 @@ def create_averages(db_runs_dict):
         avg_runs_dict[file]["rows_avg"] = sum(db_runs_dict[file]["rows"]) // len(db_runs_dict[file]["rows"])
 
     return avg_runs_dict
+
+def create_timestamps(args):
+    """
+    Creates a dict with the timestamps for each run
+
+    Arguments:
+        args : argparse.Namespace
+            The inline arguments for the file
+
+    Returns:
+        start_date : str
+            A string for adding the start date of the run to the JSON ouput
+        timestamps : dict
+            A dict with start and stop timestamps for each run of the files 
+            to create distinct data for all runs
+    """
+
+    timestamps = {}
+
+    # Splits the argument for time into year and month
+    year_month_list = list(map(int, args.time.split("-")))
+
+    # Creating the different timestamps for use in files
+    datestamp = datetime.datetime(year_month_list[0], year_month_list[1], 1)
+    start_date = str(datestamp).split(" ")[0]
+
+    for i in range(args.runs*2):
+        date_str = str(datestamp).split(" ")[0]
+        timestamps[str(i)] = [date_str + "T00:00:00Z", date_str + "T23:59:59Z"]
+
+        datestamp += datetime.timedelta(days=1)
+
+    return start_date, timestamps
 
 def handle_args():
     """
@@ -221,7 +270,7 @@ def fix_args(argument_dict):
     """
     Handles bad inputs on the int values and sets them to default values if not fixable
 
-    Parameters:
+    Arguments:
         argument_dict : dict
             A dict with the name of the argparse argument and its value
     
@@ -233,7 +282,7 @@ def fix_args(argument_dict):
     try:
         argument = int(list(argument_dict.values())[0])
         if argument <= 0:
-            raise Exception("No numbers below 0")
+            raise ValueError("No numbers below 0")
     except:
         if list(argument_dict.keys())[0] == "workers":
             argument = 4
@@ -249,7 +298,9 @@ def fix_args(argument_dict):
     return argument
 
 def main():
-
+    """
+    Runs the program
+    """
     args = handle_args()
 
     # The database setups
@@ -282,22 +333,10 @@ def main():
     # The use cases for the files
     use_case_list = ["devops", "iot"]
 
+    start_date, timestamps = create_timestamps(args)
+
     db_runs_dict = {}
     file_number = 0
-
-    timestamps = {}
-
-    year_month_list = list(map(int, args.time.split("-")))
-
-    # Creating the different timestamps for use in files
-    datestamp = datetime.datetime(year_month_list[0], year_month_list[1], 1)
-    start_date = datestamp.__str__().split(" ")[0]
-
-    for i in range(args.runs*2):
-        date_str = datestamp.__str__().split(" ")[0]
-        timestamps[str(i)] = [date_str + "T00:00:00Z", date_str + "T23:59:59Z"]
-
-        datestamp += datetime.timedelta(days=1)
 
     # Running for each file the number of set runs
     for test_file in db_setup[args.format]["test_files"]:
@@ -306,10 +345,12 @@ def main():
         for run in range(args.runs):
             print("Run number: " + str(run+1))
             # Generating the data through TSBS
-            generate_data(main_file_path, use_case_list[file_number], args.format, args.scale, args.seed, timestamps, run, args.runs, file_number)
+            #generate_data(main_file_path, use_case_list[file_number], args.format, args.scale, args.seed, timestamps, run, args.runs, file_number)
+            generate_data(main_file_path, use_case_list[file_number], args, timestamps, run, file_number)
 
             # Loading the data through TSBS
-            totals, metrics_list, rows_list, time_list = load_data(main_file_path, db_setup[args.format]["db_engine"], test_file, db_setup[args.format]["extra_commands"], args.workers, args.batch, run)
+            #totals, metrics_list, rows_list, time_list = load_data(main_file_path, db_setup[args.format]["db_engine"], test_file, db_setup[args.format]["extra_commands"], args.workers, args.batch, run)
+            totals, metrics_list, rows_list, time_list = load_data(main_file_path, db_setup[args.format], test_file, args, run)
             if run == 0:
                 db_runs_dict[use_case_list[file_number]] = {"time_run": time_list, "metrics": metrics_list, "total_metrics": totals[0], "rows": rows_list, "total_rows": totals[1]}
             else:
@@ -322,11 +363,18 @@ def main():
 
     avg_dict = create_averages(db_runs_dict)
 
-    avg_dict["metadata"] = {"db_engine": args.format, "scale": args.scale, "seed": args.seed, "workers": args.workers, "runs": args.runs, "start_date": start_date}
+    avg_dict["metadata"] = {
+        "db_engine": args.format, 
+        "scale": args.scale, 
+        "seed": args.seed, 
+        "workers": args.workers, 
+        "runs": args.runs, 
+        "start_date": start_date
+    }
     
     output_file = "tsbs_" + args.format + "_s" + str(args.scale) + "_w" + str(args.workers) + ".json"
     
-    with open(output_file, "w") as f:
+    with open(output_file, "w", encoding="ASCII") as f:
         json.dump(avg_dict, f, indent=4)
 
 if __name__ == "__main__":
