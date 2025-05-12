@@ -180,7 +180,7 @@ def create_averages(db_runs_dict):
     avg_runs_dict = {}
 
     for file in db_runs_dict:
-        #avg_runs_dict[file] = {"time_run": db_runs_dict[file]["time_run"]}
+        avg_runs_dict[file] = {}
         avg_runs_dict[file].update({
             "time_run": db_runs_dict[file]["time_run"],
             "time_avg": round(sum(db_runs_dict[file]["time_run"]) / len(db_runs_dict[file]["time_run"]), 2),
