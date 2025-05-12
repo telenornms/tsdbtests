@@ -30,6 +30,7 @@ def generate_data(path_dict, args, timestamps, file_number, run):
     use_case = path_dict["use_case"][file_number]
 
     # Devops data are 10x the size of the others, so need to shrink
+    # Sets it to 1 if scale is smaller than 10
     if use_case == "devops":
         new_scale = args.scale//10
         new_scale = new_scale if new_scale >= 1 else 1
@@ -38,16 +39,14 @@ def generate_data(path_dict, args, timestamps, file_number, run):
 
     full_file_path = file_path + args.format + "_" + use_case + "_" + str(run+1) + ".gz"
 
-    use_case_str = " --use-case="+use_case
-    format_str = " --format="+args.format
-    seed_str = " --seed="+str(args.seed)
-    scale_str = " --scale="+str(new_scale)
+    use_case_format_str = " --use-case="+use_case + " --format="+args.format
+    seed_scale_str = " --seed="+str(args.seed) + " --scale="+str(new_scale)
     t_start_str = " --timestamp-start="+timestamps[str(run+args.runs*file_number)][0]
     t_stop_str = " --timestamp-end="+timestamps[str(run+args.runs*file_number)][1]
 
     print("Creating file: " + full_file_path)
 
-    full_command = run_path + use_case_str + format_str + seed_str + scale_str + t_start_str + t_stop_str + " --log-interval=10s" + " | gzip > " + full_file_path
+    full_command = run_path + use_case_format_str + seed_scale_str + t_start_str + t_stop_str + " --log-interval=10s" + " | gzip > " + full_file_path
 
     subprocess.run(full_command, shell=True, check=False)
 
@@ -83,7 +82,6 @@ def load_data(path_dict, args, db_setup, test_file, run):
     workers_str = " --workers " + str(args.workers)
     batch_str = " --batch-size " + str(args.batch)
 
-    #full_command = "cat " + file_path + " | gunzip | " + run_path + " --workers " + str(workers) + " --batch-size " + str(batch)
     full_command = "cat " + file_path + " | gunzip | " + run_path + workers_str + batch_str
     for command in db_setup["extra_commands"]:
         full_command += command
@@ -170,24 +168,34 @@ def create_averages(db_runs_dict):
 
     Parameters:
         db_runs_dict : dict
-            A dictionary containing all the data about all the runs; time/run, metrics/sec, rows/sec,
-            and total metrics and rows
+            A dictionary containing all the data about all the runs; time/run, metrics/sec, 
+            rows/sec, and total metrics and rows
     
     Returns:
         avg_runs_dict : dict
-            The same dict as db_runs_dict, but including the average metrics/sec/file, rows/sec/file,
-            and time/run/file
+            The same dict as db_runs_dict, but including the average metrics/sec/file, 
+            rows/sec/file, and time/run/file
     """
 
     avg_runs_dict = {}
 
     for file in db_runs_dict:
-        avg_runs_dict[file] = {"time_run": db_runs_dict[file]["time_run"]}
-        avg_runs_dict[file]["time_avg"] = round(sum(db_runs_dict[file]["time_run"]) / len(db_runs_dict[file]["time_run"]), 2)
-        avg_runs_dict[file].update({"metrics_sec": db_runs_dict[file]["metrics"], "total_metrics": db_runs_dict[file]["total_metrics"]})
-        avg_runs_dict[file]["metrics_avg"] = sum(db_runs_dict[file]["metrics"]) // len(db_runs_dict[file]["metrics"])
-        avg_runs_dict[file].update({"rows_sec": db_runs_dict[file]["rows"], "total_rows": db_runs_dict[file]["total_rows"]})
-        avg_runs_dict[file]["rows_avg"] = sum(db_runs_dict[file]["rows"]) // len(db_runs_dict[file]["rows"])
+        #avg_runs_dict[file] = {"time_run": db_runs_dict[file]["time_run"]}
+        avg_runs_dict[file].update({
+            "time_run": db_runs_dict[file]["time_run"],
+            "time_avg": round(sum(db_runs_dict[file]["time_run"]) / len(db_runs_dict[file]["time_run"]), 2),
+            "metrics_sec": db_runs_dict[file]["metrics"], 
+            "total_metrics": db_runs_dict[file]["total_metrics"],
+            "metrics_avg": sum(db_runs_dict[file]["metrics"]) // len(db_runs_dict[file]["metrics"]),
+            "rows_sec": db_runs_dict[file]["rows"], 
+            "total_rows": db_runs_dict[file]["total_rows"],
+            "rows_avg": sum(db_runs_dict[file]["rows"]) // len(db_runs_dict[file]["rows"])
+        })
+        #avg_runs_dict[file]["time_avg"] = round(sum(db_runs_dict[file]["time_run"]) / len(db_runs_dict[file]["time_run"]), 2)
+        #avg_runs_dict[file].update({"metrics_sec": db_runs_dict[file]["metrics"], "total_metrics": db_runs_dict[file]["total_metrics"]})
+        #avg_runs_dict[file]["metrics_avg"] = sum(db_runs_dict[file]["metrics"]) // len(db_runs_dict[file]["metrics"])
+        #avg_runs_dict[file].update({"rows_sec": db_runs_dict[file]["rows"], "total_rows": db_runs_dict[file]["total_rows"]})
+        #avg_runs_dict[file]["rows_avg"] = sum(db_runs_dict[file]["rows"]) // len(db_runs_dict[file]["rows"])
 
     return avg_runs_dict
 
@@ -207,8 +215,8 @@ def run_tsbs(path_dict, args, db_setup, timestamps):
 
     Returns:
         db_runs_dict : dict
-            A dictionary containing all the data about all the runs; time/run, metrics/sec, rows/sec,
-            and total metrics and rows
+            A dictionary containing all the data about all the runs; time/run, 
+            metrics/sec, rows/sec, and total metrics and rows
     """
 
     db_runs_dict = {}
@@ -343,7 +351,7 @@ def fix_args(argument_dict):
         argument = int(list(argument_dict.values())[0])
         if argument <= 0:
             raise ValueError("No numbers below 0")
-    except (ValueError, TypeError) as e:
+    except (ValueError, TypeError):
         if list(argument_dict.keys())[0] == "workers":
             argument = 4
         elif list(argument_dict.keys())[0] == "runs":
@@ -361,6 +369,7 @@ def main():
     """
     Runs the program
     """
+
     args = handle_args()
 
     # The database setups
