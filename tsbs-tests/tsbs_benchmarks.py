@@ -343,7 +343,7 @@ def fix_args(argument_dict):
         argument = int(list(argument_dict.values())[0])
         if argument <= 0:
             raise ValueError("No numbers below 0")
-    except ValueError:
+    except (ValueError, TypeError) as e:
         if list(argument_dict.keys())[0] == "workers":
             argument = 4
         elif list(argument_dict.keys())[0] == "runs":
