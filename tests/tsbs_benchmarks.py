@@ -78,12 +78,17 @@ def generate_query(path_dict, args, timestamps, file_number, query_type):
     new_scale = new_scale if new_scale >= 1 else 1
 
     full_file_path = file_path + args.format + "_" + use_case + "_" + query_type + ".gz"
+    
+    print(timestamps[str(args.runs-1)][1])
 
     time_end = timestamps[str(args.runs-1)][1].split("T")
     time_end = time_end[0]+" "+time_end[1][:-1]
     time_end = datetime.datetime.strptime(time_end, "%Y-%m-%d %H:%M:%S")
 
     time_end += datetime.timedelta(seconds=1)
+
+    date_str = str(time_end).split(" ", maxsplit=1)[0]
+    time_end = [date_str + "T00:00:00Z", date_str + "T23:59:59Z"]
 
     print(time_end)
     sys.exit(0)
@@ -567,6 +572,8 @@ def main():
     }
 
     start_date, timestamps = create_timestamps(args)
+
+    generate_query(path_dict, args, timestamps, 0, read_list[0])
 
     db_runs_dict = run_tsbs(path_dict, args, db_setup, timestamps)
 
