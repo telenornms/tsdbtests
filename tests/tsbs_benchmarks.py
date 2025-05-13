@@ -110,7 +110,7 @@ def generate_query(path_dict, args, timestamps, query_type):
         file_path
     )
 
-    subprocess.run(full_command, shell=True, check=False)
+    subprocess.run(full_command, shell=True, check=False, capture_output=True)
 
 def load_data(path_dict, args, db_setup, run):
     """
@@ -236,7 +236,7 @@ def run_query(path_dict, args, db_setup, query_type):
     """
 
     # The path to your tsbs/bin folder
-    run_path = path_dict["main_path"] + "bin/tsbs_run_query_" + db_setup["db_engine"]
+    run_path = path_dict["main_path"] + "bin/tsbs_run_queries_" + db_setup["db_engine"]
 
     #The path to your folder for storing tsbs generated files
     file_path = "/tmp/" + path_dict["test_file"] + "_" + query_type + ".gz"
@@ -262,9 +262,19 @@ def run_query(path_dict, args, db_setup, query_type):
             print(output.stderr)
             sys.exit("Database error!")
 
-    print(output)
+    processed_output = handle_query(output)
 
-    return output
+    return processed_output
+
+def handle_query(output):
+
+    output_lines = output.stdout.strip().split("\n")
+
+    for line in output_lines:
+        if "(" in line and ")" in line:
+            print(line)
+
+    return output_lines
 
 def create_averages(db_dict):
     """
@@ -374,7 +384,12 @@ def run_tsbs_query(path_dict, args, db_setup, timestamps, read_list):
     for query in read_list:
         generate_query(path_dict, args, timestamps, query)
 
-        run_query(path_dict, args, db_setup, query)
+        run_query(
+            path_dict, 
+            args, 
+            db_setup[args.format], 
+            query
+        )
 
     return db_runs_dict
 
