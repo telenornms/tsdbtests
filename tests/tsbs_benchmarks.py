@@ -276,10 +276,21 @@ def handle_query(output):
 
     output_lines = output.stdout.strip().split("\n")
 
+    last_line = ""
+    query_list = []
+    query_match = ""
+
     for line in output_lines:
         if "(" in line and ")" in line:
-            print(line)
+            # Finds all floats to grab the time per run
+            query_match = re.findall(r"-?\d+\.\d+", line)
 
+            query_list.append(query_match)
+        
+        last_line = line
+
+    print(query_list)
+    print(last_line)
     print(" ")
     return output_lines
 
