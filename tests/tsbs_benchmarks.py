@@ -59,7 +59,7 @@ def generate_data(path_dict, args, timestamps, file_number, run):
 
     subprocess.run(full_command, shell=True, check=False)
 
-def generate_query(path_dict, args, timestamps, query_type):
+def generate_query(path_dict, args, timestamps, read_dict, query_type):
     """
     Generates files using tsbs_generate
 
@@ -70,6 +70,8 @@ def generate_query(path_dict, args, timestamps, query_type):
             The list of inline arguments given to the program
         timestamps : dict
             A dict with the timestamps
+        read_dict : dict
+            A dict with all the queries and a JSON friendly format
         query_type : str
             The type of query to be ran, chosen from the list of query types
     """
@@ -85,6 +87,7 @@ def generate_query(path_dict, args, timestamps, query_type):
 
     file_path = "/tmp/" + path_dict["test_file"] + "_" + query_type + ".gz"
 
+    # Generates a new timestamp for the end point at 1 second past data generation
     time_end = timestamps[str(args.runs-1)][1].split("T")
     time_end = (
         datetime.datetime.strptime(time_end[0]+" "+time_end[1][:-1], "%Y-%m-%d %H:%M:%S") +
@@ -105,7 +108,7 @@ def generate_query(path_dict, args, timestamps, query_type):
         " --timestamp-end=" + time_end +
         " --format=" + args.format +
         " --queries=" + str(args.queries) +
-        " --query-type=" + query_type +
+        " --query-type=" + read_dict[query_type] +
         " | gzip > " + 
         file_path
     )
@@ -267,6 +270,9 @@ def run_query(path_dict, args, db_setup, query_type):
     return processed_output
 
 def handle_query(output):
+    """
+    For formatting the output from the query
+    """
 
     output_lines = output.stdout.strip().split("\n")
 
@@ -274,6 +280,7 @@ def handle_query(output):
         if "(" in line and ")" in line:
             print(line)
 
+    print(" ")
     return output_lines
 
 def create_averages(db_dict):
@@ -367,7 +374,7 @@ def run_tsbs_load(path_dict, args, db_setup, timestamps):
 
     return db_runs_dict
 
-def run_tsbs_query(path_dict, args, db_setup, timestamps, read_list):
+def run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict):
     """
     Runs the script for reading data
 
@@ -381,13 +388,13 @@ def run_tsbs_query(path_dict, args, db_setup, timestamps, read_list):
     path_dict["test_file"] = db_setup[args.format]["test_files"][0]
     print("Running with " + path_dict["test_file"])
 
-    for query in read_list:
-        generate_query(path_dict, args, timestamps, query)
+    for query in read_dict:
+        generate_query(path_dict, args, timestamps, read_dict, query)
 
         run_query(
-            path_dict, 
-            args, 
-            db_setup[args.format], 
+            path_dict,
+            args,
+            db_setup[args.format],
             query
         )
 
@@ -625,19 +632,19 @@ def main():
          }
     }
 
-    read_list = [
-        "single-groupby-1-1-1", 
-        "single-groupby-1-1-12", 
-        "single-groupby-1-8-1", 
-        "single-groupby-5-1-1", 
-        "single-groupby-5-1-12", 
-        "single-groupby-5-8-1", 
-        "cpu-max-all-1", 
-        "cpu-max-all-8", 
-        "double-groupby-1", 
-        "double-groupby-5", 
-        "double-groupby-all"
-    ]
+    read_dict = {
+        "single_groupby_1_1_1": "single-groupby-1-1-1", 
+        "single_groupby_1_1_12": "single-groupby-1-1-12", 
+        "single_groupby_1_8_1": "single-groupby-1-8-1", 
+        "single_groupby_5_1_1": "single-groupby-5-1-1", 
+        "single_groupby_5_1_12": "single-groupby-5-1-12", 
+        "single_groupby_5_8_1": "single-groupby-5-8-1", 
+        "cpu_max_all_1": "cpu-max-all-1", 
+        "cpu_max_all_8": "cpu-max-all-8", 
+        "double_groupby_1": "double-groupby-1", 
+        "double_groupby_5": "double-groupby-5", 
+        "double_groupby_all": "double-groupby-all"
+    }
 
     # The file path for where tsbs is stored, default is in the project folder
     # The use cases for the files
@@ -653,7 +660,7 @@ def main():
     if args.operation == "write":
         db_runs_dict = run_tsbs_load(path_dict, args, db_setup, timestamps)
     elif args.operation == "read":
-        db_runs_dict = run_tsbs_query(path_dict, args, db_setup, timestamps, read_list)
+        db_runs_dict = run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict)
 
     avg_dict = create_averages(db_runs_dict)
 
@@ -666,12 +673,22 @@ def main():
         "start_date": start_date
     }
 
-    output_file = (
-        "tsbs_" + args.format + 
-        "_s" + str(args.scale) + 
-        "_w" + str(args.workers) + 
-        ".json"
-    )
+    if args.operation == "write":
+        output_file = (
+            "tsbs_" + args.format +
+            "_write" +
+            "_s" + str(args.scale) +
+            "_w" + str(args.workers) +
+            ".json"
+        )
+    elif args.operation == "read":
+        output_file = (
+            "tsbs_" + args.format +
+            "_read" +
+            "_s" + str(args.scale) +
+            "_w" + str(args.workers) +
+            ".json"
+        )
 
     with open(output_file, "w", encoding="ASCII") as f:
         json.dump(avg_dict, f, indent=4)
