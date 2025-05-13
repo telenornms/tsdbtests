@@ -322,7 +322,7 @@ def run_tsbs_load(path_dict, args, db_setup, timestamps):
     # Running for each file the number of set runs
     for test_file in db_setup[args.format]["test_files"]:
         print("Running with " + test_file)
-        path_dict["testfile"] = test_file
+        path_dict["test_file"] = test_file
 
         for run in range(args.runs):
             print("Run number: " + str(run+1))
