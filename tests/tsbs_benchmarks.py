@@ -1,5 +1,5 @@
 """
-Program for running tsbs multiple times to get an average benchmark for ingestion of data
+Program for running tsbs to get an benchmark for ingestion and reading of data
 Made for use only with Influx, QuestDB, TimeScaleDB or VictoriaMetricsDB
 """
 
@@ -61,16 +61,26 @@ def generate_data(path_dict, args, timestamps, file_number, run):
 
     subprocess.run(full_command, shell=True, check=False)
 
-def generate_query(path_dict, args, timestamps, file_number, query_type):
+def generate_query(path_dict, args, timestamps, query_type):
     """
-    
+    Generates files using tsbs_generate
+
+    Parameters:
+        path_dict : dict
+            A dict with the path to TSBS, and the use_case
+        args : argparse.Namespace
+            The list of inline arguments given to the program
+        timestamps : dict
+            A dict with the timestamps
+        query_type : str
+            The type of query to be ran, chosen from the list of query types
     """
 
     run_path = path_dict["main_path"] + "bin/tsbs_generate_queries"
 
     file_path = "/tmp/"
 
-    use_case = path_dict["use_case"][file_number]
+    use_case = path_dict["use_case"][0]
 
     # Devops data are 10x the size of the others, so need to shrink
     # Sets it to 1 if scale is smaller than 10
@@ -78,20 +88,15 @@ def generate_query(path_dict, args, timestamps, file_number, query_type):
     new_scale = new_scale if new_scale >= 1 else 1
 
     full_file_path = file_path + args.format + "_" + use_case + "_" + query_type + ".gz"
-    
-    print(timestamps[str(args.runs-1)][1])
 
     time_end = timestamps[str(args.runs-1)][1].split("T")
-    time_end = time_end[0]+" "+time_end[1][:-1]
-    time_end = datetime.datetime.strptime(time_end, "%Y-%m-%d %H:%M:%S")
+    time_end = (
+        datetime.datetime.strptime(time_end[0]+" "+time_end[1][:-1], "%Y-%m-%d %H:%M:%S") +
+        datetime.timedelta(seconds=1)
+    )
 
-    time_end += datetime.timedelta(seconds=1)
-
-    date_str = str(time_end).split(" ", maxsplit=1)[0]
-    time_end = [date_str + "T00:00:00Z", date_str + "T23:59:59Z"]
-
-    print(time_end)
-    sys.exit(0)
+    date_str = str(time_end).split(" ", maxsplit=1)
+    time_end = date_str[0] + "T" + date_str[1] + "Z"
 
     full_command = (
         run_path +
@@ -101,7 +106,7 @@ def generate_query(path_dict, args, timestamps, file_number, query_type):
         " --timestamp-start=" + timestamps["0"][0] +
         " --timestamp-end=" + time_end +
         " --format=" + args.format +
-        " --queries=" + +
+        " --queries=" + args.queries +
         " --query-type" + query_type +
         " | gzip > " + 
         full_file_path
@@ -247,7 +252,9 @@ def run_query(path_dict, args, db_setup, test_file, run):
     for command in db_setup["extra_commands"]:
         full_command += command
 
-    return
+    output = subprocess.run(full_command, shell=True, capture_output=True, text=True, check=False)
+
+    return output
 
 def create_averages(db_dict):
     """
@@ -281,7 +288,7 @@ def create_averages(db_dict):
 
     return avg_runs_dict
 
-def run_tsbs(path_dict, args, db_setup, timestamps):
+def run_tsbs_load(path_dict, args, db_setup, timestamps):
     """
     Runs the tsbs scripts
 
@@ -340,6 +347,13 @@ def run_tsbs(path_dict, args, db_setup, timestamps):
 
     return db_runs_dict
 
+def run_tsbs_query(path_dict, args, db_setup, timestamps, read_list):
+
+    for query in read_list:
+        generate_query(path_dict, args, timestamps, query)
+
+    return
+
 def create_timestamps(args):
     """
     Creates a dict with the timestamps for each run
@@ -386,6 +400,16 @@ def handle_args():
         description="A script for testing TSBS"
     )
 
+    # General program running
+    parser.add_argument(
+        "-o",
+        "--operation",
+        help="Which type of operation you want to run",
+        choices=["read", "write"],
+        required=True,
+        type=str
+    )
+
     # Arguments for data load
     parser.add_argument(
         "-f", 
@@ -397,7 +421,7 @@ def handle_args():
     )
     parser.add_argument(
         "-d",
-        "--admin_db_name",
+        "--db_name",
         help="The database you are using for test, REQUIRED for TimeScale",
         type=str
     )
@@ -459,6 +483,14 @@ def handle_args():
         type=int
     )
 
+    # Arguments for query generation
+    parser.add_argument(
+        "-q",
+        "--queries",
+        help="The number of queries to be ran, default = 1000",
+        type=int
+    )
+
     args = parser.parse_args()
 
     # Check if right arguments for the format
@@ -466,8 +498,8 @@ def handle_args():
         if args.auth_token is None:
             sys.exit("Influx needs --auth_token")
     elif args.format == "timescaledb":
-        if args.admin_db_name is None or args.password is None:
-            sys.exit("TimeScale needs --admin_db_name and --password")
+        if args.db_name is None or args.password is None:
+            sys.exit("TimeScale needs --db_name and --password")
 
     args.workers = fix_args({"workers": args.workers})
 
@@ -480,6 +512,8 @@ def handle_args():
     args.batch = fix_args({"batch": args.batch})
 
     args.log_time = fix_args({"log_time": args.log_time})
+
+    args.queries = fix_args({"queries": args.queries})
 
     if not re.findall(r"\d\d\d\d-\d\d", args.time, re.IGNORECASE):
         args.time = "2025-01"
@@ -516,6 +550,8 @@ def fix_args(argument_dict):
             argument = 10000
         elif list(argument_dict.keys())[0] == "log_time":
             argument = 10
+        elif list(argument_dict.keys())[0] == "queries":
+            argument = 1000
 
     return argument
 
@@ -541,7 +577,7 @@ def main():
      "timescaledb": {
          "db_engine": "timescaledb",
          "test_files": ["timescaledb_devops", "timescaledb_iot"],
-         "extra_commands": [" --admin-db-name ", args.admin_db_name, " --pass ", args.password]
+         "extra_commands": [" --db-name ", args.db_name, " --pass ", args.password]
          },
      "victoriametrics": {
          "db_engine": "victoriametrics",
@@ -575,7 +611,10 @@ def main():
 
     generate_query(path_dict, args, timestamps, 0, read_list[0])
 
-    db_runs_dict = run_tsbs(path_dict, args, db_setup, timestamps)
+    if args.operation == "write":
+        db_runs_dict = run_tsbs_load(path_dict, args, db_setup, timestamps)
+    elif args.operation == "read":
+        db_runs_dict = run_tsbs_query(path_dict, args, db_setup, timestamps, read_list)
 
     avg_dict = create_averages(db_runs_dict)
 
