@@ -47,7 +47,7 @@ def generate_data(path_dict, args, timestamps, file_number, run):
     print("Creating file: " + full_file_path)
 
     full_command = (
-        run_path + 
+        run_path +
         " --use-case=" + use_case +
         " --format=" + args.format +
         " --seed=" + str(args.seed) +
@@ -239,20 +239,20 @@ def run_tsbs(path_dict, args, db_setup, timestamps):
 
             # Loading the data through TSBS
             totals, metrics_list, rows_list, time_list = load_data(
-                path_dict, 
-                args, 
-                db_setup[args.format], 
-                test_file, 
+                path_dict,
+                args,
+                db_setup[args.format],
+                test_file,
                 run
             )
-            
+
             if run == 0:
                 db_runs_dict[path_dict["use_case"][file_number]] = {
                     "time_run": time_list, 
                     "metrics": metrics_list, 
                     "total_metrics": totals[0], 
                     "rows": rows_list, 
-                    "total_rows": totals[1]
+                    "total_rows": totals[1] 
                 }
             else:
                 db_runs_dict[path_dict["use_case"][file_number]]["time_run"].extend(time_list)
@@ -314,72 +314,72 @@ def handle_args():
     parser.add_argument(
         "-f", 
         "--format", 
-        help="The database format", 
-        choices=["influx", "questdb", "timescaledb", "victoriametrics"], 
-        required=True, 
+        help="The database format",
+        choices=["influx", "questdb", "timescaledb", "victoriametrics"],
+        required=True,
         type=str
     )
     parser.add_argument(
-        "-d", 
-        "--admin_db_name", 
-        help="The database you are using for test, REQUIRED for TimeScale", 
+        "-d",
+        "--admin_db_name",
+        help="The database you are using for test, REQUIRED for TimeScale",
         type=str
     )
     parser.add_argument(
-        "-p", 
-        "--password", 
-        help="The password for the database/user, REQUIRED for TimeScale", 
+        "-p",
+        "--password",
+        help="The password for the database/user, REQUIRED for TimeScale",
         type=str
     )
     parser.add_argument(
-        "-a", 
-        "--auth_token", 
-        help="The token for the database/user, REQUIRED for Influx", 
+        "-a",
+        "--auth_token",
+        help="The token for the database/user, REQUIRED for Influx",
         type=str
     )
     parser.add_argument(
-        "-w", 
-        "--workers", 
-        help="The number of simultanious processes to run the database load, default=4", 
+        "-w",
+        "--workers",
+        help="The number of simultaneous processes to run the database load, default=4",
         type=int
     )
     parser.add_argument(
-        "-r", 
-        "--runs", 
-        help="The number of runs per file, default=5", 
+        "-r",
+        "--runs",
+        help="The number of runs per file, default=5",
         type=int
     )
     parser.add_argument(
-        "-b", 
-        "--batch", 
-        help="Number of items to batch together in a single run, default=10000", 
+        "-b",
+        "--batch",
+        help="Number of items to batch together in a single run, default=10000",
         type=int
     )
 
     # Arguments for data generation
     parser.add_argument(
-        "-s", 
-        "--scale", 
+        "-s",
+        "--scale",
         help="The scale for the files, default=1000 for iot and cpu, default=100 for devops",
         type=int
     )
     parser.add_argument(
-        "-e", 
-        "--seed", 
-        help="The seed for data generation, same data across all formats, default=123", 
+        "-e",
+        "--seed",
+        help="The seed for data generation, same data across all formats, default=123",
         type=int
     )
     parser.add_argument(
-        "-t", 
-        "--time", 
-        help="The start time for the data generation, format YYYY-MM", 
-        type=str, 
+        "-t",
+        "--time",
+        help="The start time for the data generation, format YYYY-MM",
+        type=str,
         required=True
     )
     parser.add_argument(
-        "-l", 
-        "--log_time", 
-        help="The time between data points, in seconds, default = 10s", 
+        "-l",
+        "--log_time",
+        help="The time between data points, in seconds, default = 10s",
         type=int
     )
 
