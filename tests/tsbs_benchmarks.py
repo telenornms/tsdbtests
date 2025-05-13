@@ -30,8 +30,6 @@ def generate_data(path_dict, args, timestamps, file_number, run):
 
     run_path = path_dict["main_path"] + "bin/tsbs_generate_data"
 
-    file_path = "/tmp/"
-
     use_case = path_dict["use_case"][file_number]
 
     # Devops data are 10x the size of the others, so need to shrink
@@ -42,9 +40,9 @@ def generate_data(path_dict, args, timestamps, file_number, run):
     else:
         new_scale = args.scale
 
-    full_file_path = file_path + args.format + "_" + use_case + "_" + str(run+1) + ".gz"
+    file_path = "/tmp/" + path_dict["test_file"] + "_" + str(run+1) + ".gz"
 
-    print("Creating file: " + full_file_path)
+    print("Creating file: " + file_path)
 
     full_command = (
         run_path +
@@ -56,7 +54,7 @@ def generate_data(path_dict, args, timestamps, file_number, run):
         " --timestamp-end=" + timestamps[str(run + (args.runs * file_number))][1] +
         " --log-interval=" + str(args.log_time) + "s" + 
         " | gzip > " + 
-        full_file_path
+        file_path
     )
 
     subprocess.run(full_command, shell=True, check=False)
@@ -98,6 +96,8 @@ def generate_query(path_dict, args, timestamps, query_type):
     date_str = str(time_end).split(" ", maxsplit=1)
     time_end = date_str[0] + "T" + date_str[1] + "Z"
 
+    print("Creating file: " + full_file_path)
+
     full_command = (
         run_path +
         " --use-case=" + use_case +
@@ -106,7 +106,7 @@ def generate_query(path_dict, args, timestamps, query_type):
         " --timestamp-start=" + timestamps["0"][0] +
         " --timestamp-end=" + time_end +
         " --format=" + args.format +
-        " --queries=" + args.queries +
+        " --queries=" + str(args.queries) +
         " --query-type" + query_type +
         " | gzip > " + 
         full_file_path
@@ -114,8 +114,7 @@ def generate_query(path_dict, args, timestamps, query_type):
 
     subprocess.run(full_command, shell=True, check=False)
 
-
-def load_data(path_dict, args, db_setup, test_file, run):
+def load_data(path_dict, args, db_setup, run):
     """
     Loads the data into the database using tsbs_load_<db_engine>
     and gets the number of metrics per sec, rows per sec, overall time per run
@@ -123,13 +122,11 @@ def load_data(path_dict, args, db_setup, test_file, run):
 
     Parameters:
         path_dict : dict
-            A dict with the path to TSBS, and the use_case
+            A dict with the path to TSBS, the use_case, and the file name
         args : argparse.Namespace
             The list of inline arguments given to the program 
         db_setup : dict
             The dict with all metadata about the selected database
-        test_file : str
-            The string path for the file to be read into the database
         run : int
             The current run of the use case
 
@@ -142,10 +139,10 @@ def load_data(path_dict, args, db_setup, test_file, run):
     run_path = path_dict["main_path"] + "bin/tsbs_load_" + db_setup["db_engine"]
 
     #The path to your folder for storing tsbs generated load files
-    file_path = "/tmp/" + test_file + "_" + str(run+1) +".gz"
+    file_path = "/tmp/" + path_dict["test_file"] + "_" + str(run+1) + ".gz"
 
     full_command = (
-        "cat " + file_path + 
+        "cat " + file_path +
         " | gunzip | " + 
         run_path + 
         " --workers " + str(args.workers) + 
@@ -231,19 +228,23 @@ def handle_load(output):
 
     return totals, metrics_list, rows_list, time_list
 
-def run_query(path_dict, args, db_setup, test_file, run):
+def run_query(path_dict, args, db_setup, test_file, query_type):
     """
-    
+    Running the query against the database
+
+    Parameters:
+
+    Returns:
     """
 
     # The path to your tsbs/bin folder
-    run_path = path_dict["main_path"] + "bin/tsbs_load_" + db_setup["db_engine"]
+    run_path = path_dict["main_path"] + "bin/tsbs_run_query_" + db_setup["db_engine"]
 
     #The path to your folder for storing tsbs generated load files
-    file_path = "/tmp/" + test_file + "_" + str(run+1) +".gz"
+    file_path = "/tmp/" + test_file + "_" + query_type +".gz"
 
     full_command = (
-        "cat " + file_path + 
+        "cat " + file_path +
         " | gunzip | " + 
         run_path + 
         " --workers " + str(args.workers)
@@ -253,6 +254,13 @@ def run_query(path_dict, args, db_setup, test_file, run):
         full_command += command
 
     output = subprocess.run(full_command, shell=True, capture_output=True, text=True, check=False)
+
+    # Checks if there has been any error in loading with tsbs,
+    # and prints the error and exits the program
+    for line in output.stderr.strip().split("\n"):
+        if re.findall(r'panic', line, re.IGNORECASE):
+            print(output.stderr)
+            sys.exit("Database error!")
 
     return output
 
@@ -314,6 +322,7 @@ def run_tsbs_load(path_dict, args, db_setup, timestamps):
     # Running for each file the number of set runs
     for test_file in db_setup[args.format]["test_files"]:
         print("Running with " + test_file)
+        path_dict["testfile"] = test_file
 
         for run in range(args.runs):
             print("Run number: " + str(run+1))
@@ -325,7 +334,6 @@ def run_tsbs_load(path_dict, args, db_setup, timestamps):
                 path_dict,
                 args,
                 db_setup[args.format],
-                test_file,
                 run
             )
 
@@ -349,10 +357,13 @@ def run_tsbs_load(path_dict, args, db_setup, timestamps):
 
 def run_tsbs_query(path_dict, args, db_setup, timestamps, read_list):
 
+    db_runs_dict = {}
+
+    print("Running with " + db_setup[args.format]["test_files"][0])
     for query in read_list:
         generate_query(path_dict, args, timestamps, query)
 
-    return
+    return db_runs_dict
 
 def create_timestamps(args):
     """
@@ -609,7 +620,7 @@ def main():
 
     start_date, timestamps = create_timestamps(args)
 
-    generate_query(path_dict, args, timestamps, 0, read_list[0])
+    db_runs_dict = {}
 
     if args.operation == "write":
         db_runs_dict = run_tsbs_load(path_dict, args, db_setup, timestamps)
