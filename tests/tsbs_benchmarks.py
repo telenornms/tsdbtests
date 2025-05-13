@@ -61,6 +61,50 @@ def generate_data(path_dict, args, timestamps, file_number, run):
 
     subprocess.run(full_command, shell=True, check=False)
 
+def generate_query(path_dict, args, timestamps, file_number, query_type):
+    """
+    
+    """
+
+    run_path = path_dict["main_path"] + "bin/tsbs_generate_queries"
+
+    file_path = "/tmp/"
+
+    use_case = path_dict["use_case"][file_number]
+
+    # Devops data are 10x the size of the others, so need to shrink
+    # Sets it to 1 if scale is smaller than 10
+    new_scale = args.scale//10
+    new_scale = new_scale if new_scale >= 1 else 1
+
+    full_file_path = file_path + args.format + "_" + use_case + "_" + query_type + ".gz"
+
+    time_end = timestamps[str(args.runs-1)][1].split("T")
+    time_end = time_end[0]+" "+time_end[1][:-1]
+    time_end = datetime.datetime.strptime(time_end, "%Y-%m-%d %H:%M:%S")
+
+    time_end += datetime.timedelta(seconds=1)
+
+    print(time_end)
+    sys.exit(0)
+
+    full_command = (
+        run_path +
+        " --use-case=" + use_case +
+        " --seed=" + str(args.seed) +
+        " --scale=" + str(new_scale) +
+        " --timestamp-start=" + timestamps["0"][0] +
+        " --timestamp-end=" + time_end +
+        " --format=" + args.format +
+        " --queries=" + +
+        " --query-type" + query_type +
+        " | gzip > " + 
+        full_file_path
+    )
+
+    subprocess.run(full_command, shell=True, check=False)
+
+
 def load_data(path_dict, args, db_setup, test_file, run):
     """
     Loads the data into the database using tsbs_load_<db_engine>
@@ -90,10 +134,14 @@ def load_data(path_dict, args, db_setup, test_file, run):
     #The path to your folder for storing tsbs generated load files
     file_path = "/tmp/" + test_file + "_" + str(run+1) +".gz"
 
-    workers_str = " --workers " + str(args.workers)
-    batch_str = " --batch-size " + str(args.batch)
+    full_command = (
+        "cat " + file_path + 
+        " | gunzip | " + 
+        run_path + 
+        " --workers " + str(args.workers) + 
+        " --batch-size " + str(args.batch)
+    )
 
-    full_command = "cat " + file_path + " | gunzip | " + run_path + workers_str + batch_str
     for command in db_setup["extra_commands"]:
         full_command += command
 
@@ -172,6 +220,29 @@ def handle_load(output):
     time_list.append(round(float(time_match[0]), 2))
 
     return totals, metrics_list, rows_list, time_list
+
+def run_query(path_dict, args, db_setup, test_file, run):
+    """
+    
+    """
+
+    # The path to your tsbs/bin folder
+    run_path = path_dict["main_path"] + "bin/tsbs_load_" + db_setup["db_engine"]
+
+    #The path to your folder for storing tsbs generated load files
+    file_path = "/tmp/" + test_file + "_" + str(run+1) +".gz"
+
+    full_command = (
+        "cat " + file_path + 
+        " | gunzip | " + 
+        run_path + 
+        " --workers " + str(args.workers)
+    )
+
+    for command in db_setup["extra_commands"]:
+        full_command += command
+
+    return
 
 def create_averages(db_dict):
     """
@@ -469,10 +540,24 @@ def main():
          },
      "victoriametrics": {
          "db_engine": "victoriametrics",
-         "test_files": ["victoriametrics_devops", "victoriametrics_iot"],
+         "test_files": ["victoriametrics_devops"],
          "extra_commands": []
          }
     }
+
+    read_list = [
+        "single-groupby-1-1-1", 
+        "single-groupby-1-1-12", 
+        "single-groupby-1-8-1", 
+        "single-groupby-5-1-1", 
+        "single-groupby-5-1-12", 
+        "single-groupby-5-8-1", 
+        "cpu-max-all-1", 
+        "cpu-max-all-8", 
+        "double-groupby-1", 
+        "double-groupby-5", 
+        "double-groupby-all"
+    ]
 
     # The file path for where tsbs is stored, default is in the project folder
     # The use cases for the files
