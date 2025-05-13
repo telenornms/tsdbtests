@@ -1,6 +1,6 @@
 """
 Program for running tsbs multiple times to get an average benchmark for ingestion of data
-Made for use with only Influx, QuestDB, TimeScaleDB or VictoriaMetricsDB
+Made for use only with Influx, QuestDB, TimeScaleDB or VictoriaMetricsDB
 """
 
 import subprocess
@@ -44,14 +44,20 @@ def generate_data(path_dict, args, timestamps, file_number, run):
 
     full_file_path = file_path + args.format + "_" + use_case + "_" + str(run+1) + ".gz"
 
-    use_case_format_str = " --use-case="+use_case + " --format="+args.format
-    seed_scale_str = " --seed="+str(args.seed) + " --scale="+str(new_scale)
-    t_start_str = " --timestamp-start="+timestamps[str(run+args.runs*file_number)][0]
-    t_stop_str = " --timestamp-end="+timestamps[str(run+args.runs*file_number)][1]
-
     print("Creating file: " + full_file_path)
 
-    full_command = run_path + use_case_format_str + seed_scale_str + t_start_str + t_stop_str + " --log-interval=10s" + " | gzip > " + full_file_path
+    full_command = (
+        run_path + 
+        " --use-case=" + use_case +
+        " --format=" + args.format +
+        " --seed=" + str(args.seed) +
+        " --scale=" + str(new_scale) +
+        " --timestamp-start=" + timestamps[str(run + (args.runs * file_number))][0] +
+        " --timestamp-end=" + timestamps[str(run + (args.runs * file_number))][1] +
+        " --log-interval=" + str(args.log_time) + "s" + 
+        " | gzip > " + 
+        full_file_path
+    )
 
     subprocess.run(full_command, shell=True, check=False)
 
@@ -232,7 +238,14 @@ def run_tsbs(path_dict, args, db_setup, timestamps):
             generate_data(path_dict, args, timestamps, file_number, run)
 
             # Loading the data through TSBS
-            totals, metrics_list, rows_list, time_list = load_data(path_dict, args, db_setup[args.format], test_file, run)
+            totals, metrics_list, rows_list, time_list = load_data(
+                path_dict, 
+                args, 
+                db_setup[args.format], 
+                test_file, 
+                run
+            )
+            
             if run == 0:
                 db_runs_dict[path_dict["use_case"][file_number]] = {
                     "time_run": time_list, 
@@ -293,21 +306,82 @@ def handle_args():
             The object with the arguments, it handles arguments...
     """
 
-    parser = argparse.ArgumentParser(description="A program for testing tsbs for Influx, QuestDB, TimeScaleDB and VictoriaMetrics")
+    parser = argparse.ArgumentParser(
+        description="A script for testing TSBS"
+    )
 
     # Arguments for data load
-    parser.add_argument("-f", "--format", help="The database format", choices=["influx", "questdb", "timescaledb", "victoriametrics"], required=True, type=str)
-    parser.add_argument("-d", "--admin_db_name", help="The database you are using for test, REQUIRED for TimeScale", type=str)
-    parser.add_argument("-p", "--password",  help="The password for the database/user, REQUIRED for TimeScale", type=str)
-    parser.add_argument("-a", "--auth_token", help="The token for the database/user, REQUIRED for Influx", type=str)
-    parser.add_argument("-w", "--workers", help="The number of simultanious processes to run the database load, default=4", type=int)
-    parser.add_argument("-r", "--runs", help="The number of runs per file, default=5", type=int)
-    parser.add_argument("-b", "--batch", help="Number of items to batch together in a single run, default=10000", type=int)
+    parser.add_argument(
+        "-f", 
+        "--format", 
+        help="The database format", 
+        choices=["influx", "questdb", "timescaledb", "victoriametrics"], 
+        required=True, 
+        type=str
+    )
+    parser.add_argument(
+        "-d", 
+        "--admin_db_name", 
+        help="The database you are using for test, REQUIRED for TimeScale", 
+        type=str
+    )
+    parser.add_argument(
+        "-p", 
+        "--password", 
+        help="The password for the database/user, REQUIRED for TimeScale", 
+        type=str
+    )
+    parser.add_argument(
+        "-a", 
+        "--auth_token", 
+        help="The token for the database/user, REQUIRED for Influx", 
+        type=str
+    )
+    parser.add_argument(
+        "-w", 
+        "--workers", 
+        help="The number of simultanious processes to run the database load, default=4", 
+        type=int
+    )
+    parser.add_argument(
+        "-r", 
+        "--runs", 
+        help="The number of runs per file, default=5", 
+        type=int
+    )
+    parser.add_argument(
+        "-b", 
+        "--batch", 
+        help="Number of items to batch together in a single run, default=10000", 
+        type=int
+    )
 
     # Arguments for data generation
-    parser.add_argument("-s", "--scale", help="The scale for the files, default=1000 for iot and cpu, default=100 for devops", type=int)
-    parser.add_argument("-e", "--seed", help="The seed for data generation, same data across all formats, default=123", type=int)
-    parser.add_argument("-t", "--time", help="The start time for the data generation, format YYYY-MM", type=str, required=True)
+    parser.add_argument(
+        "-s", 
+        "--scale", 
+        help="The scale for the files, default=1000 for iot and cpu, default=100 for devops",
+        type=int
+    )
+    parser.add_argument(
+        "-e", 
+        "--seed", 
+        help="The seed for data generation, same data across all formats, default=123", 
+        type=int
+    )
+    parser.add_argument(
+        "-t", 
+        "--time", 
+        help="The start time for the data generation, format YYYY-MM", 
+        type=str, 
+        required=True
+    )
+    parser.add_argument(
+        "-l", 
+        "--log_time", 
+        help="The time between data points, in seconds, default = 10s", 
+        type=int
+    )
 
     args = parser.parse_args()
 
@@ -328,6 +402,8 @@ def handle_args():
     args.seed = fix_args({"seed": args.seed})
 
     args.batch = fix_args({"batch": args.batch})
+
+    args.log_time = fix_args({"log_time": args.log_time})
 
     if not re.findall(r"\d\d\d\d-\d\d", args.time, re.IGNORECASE):
         args.time = "2025-01"
@@ -362,6 +438,8 @@ def fix_args(argument_dict):
             argument = 123
         elif list(argument_dict.keys())[0] == "batch":
             argument = 10000
+        elif list(argument_dict.keys())[0] == "log_time":
+            argument = 10
 
     return argument
 
@@ -418,7 +496,12 @@ def main():
         "start_date": start_date
     }
 
-    output_file = "tsbs_" + args.format + "_s" + str(args.scale) + "_w" + str(args.workers) + ".json"
+    output_file = (
+        "tsbs_" + args.format + 
+        "_s" + str(args.scale) + 
+        "_w" + str(args.workers) + 
+        ".json"
+    )
 
     with open(output_file, "w", encoding="ASCII") as f:
         json.dump(avg_dict, f, indent=4)
