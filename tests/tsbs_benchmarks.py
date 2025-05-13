@@ -274,23 +274,26 @@ def handle_query(output):
     For formatting the output from the query
     """
 
-    output_lines = output.stdout.strip().split("\n")
-
     last_line = ""
     query_list = []
     query_match = ""
+    time_used = 0
+
+    output_lines = output.stdout.strip().split("\n")
 
     for line in output_lines:
         if "(" in line and ")" in line:
             # Finds all floats to grab the time per run
             query_match = re.findall(r"-?\d+\.\d+", line)
 
-            query_list.append(query_match)
-        
+            if query_match:
+                query_list.extend(query_match)
+
         last_line = line
 
+    time_used = re.findall(r"-?\d+\.\d+", last_line)
     print(query_list)
-    print(last_line)
+    print(time_used)
     print(" ")
     return output_lines
 
@@ -401,13 +404,15 @@ def run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict):
 
     for query in read_dict:
         generate_query(path_dict, args, timestamps, read_dict, query)
-
-        run_query(
-            path_dict,
-            args,
-            db_setup[args.format],
-            query
-        )
+        #for run in range(args.runs):
+        for run in range(1):
+            print("Run number: " + str(run+1))
+            run_query(
+                path_dict,
+                args,
+                db_setup[args.format],
+                query
+            )
 
     return db_runs_dict
 
@@ -536,7 +541,7 @@ def handle_args():
     parser.add_argument(
         "-l",
         "--log_time",
-        help="The time between data points, in seconds, default = 10s",
+        help="The time between data points, in seconds, default=10",
         type=int
     )
 
@@ -544,7 +549,7 @@ def handle_args():
     parser.add_argument(
         "-q",
         "--queries",
-        help="The number of queries to be ran, default = 1000",
+        help="The number of queries to be ran, default=5000",
         type=int
     )
 
@@ -608,7 +613,7 @@ def fix_args(argument_dict):
         elif list(argument_dict.keys())[0] == "log_time":
             argument = 10
         elif list(argument_dict.keys())[0] == "queries":
-            argument = 1000
+            argument = 5000
 
     return argument
 
