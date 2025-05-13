@@ -173,34 +173,34 @@ def handle_load(output):
 
     return totals, metrics_list, rows_list, time_list
 
-def create_averages(db_runs_dict):
+def create_averages(db_dict):
     """
     Creates the averages for each file per metrics, rows and tiem
 
     Parameters:
-        db_runs_dict : dict
+        db_dict : dict
             A dictionary containing all the data about all the runs; time/run, metrics/sec, 
             rows/sec, and total metrics and rows
     
     Returns:
         avg_runs_dict : dict
-            The same dict as db_runs_dict, but including the average metrics/sec/file, 
+            The same dict as db, but including the average metrics/sec/file, 
             rows/sec/file, and time/run/file
     """
 
     avg_runs_dict = {}
 
-    for file in db_runs_dict:
+    for file in db_dict:
         avg_runs_dict[file] = {}
         avg_runs_dict[file].update({
-            "time_run": db_runs_dict[file]["time_run"],
-            "time_avg": round(sum(db_runs_dict[file]["time_run"]) / len(db_runs_dict[file]["time_run"]), 2),
-            "metrics_sec": db_runs_dict[file]["metrics"], 
-            "total_metrics": db_runs_dict[file]["total_metrics"],
-            "metrics_avg": sum(db_runs_dict[file]["metrics"]) // len(db_runs_dict[file]["metrics"]),
-            "rows_sec": db_runs_dict[file]["rows"], 
-            "total_rows": db_runs_dict[file]["total_rows"],
-            "rows_avg": sum(db_runs_dict[file]["rows"]) // len(db_runs_dict[file]["rows"])
+            "time_run": db_dict[file]["time_run"],
+            "time_avg": round(sum(db_dict[file]["time_run"]) / len(db_dict[file]["time_run"]), 2),
+            "metrics_sec": db_dict[file]["metrics"], 
+            "total_metrics": db_dict[file]["total_metrics"],
+            "metrics_avg": sum(db_dict[file]["metrics"]) // len(db_dict[file]["metrics"]),
+            "rows_sec": db_dict[file]["rows"], 
+            "total_rows": db_dict[file]["total_rows"],
+            "rows_avg": sum(db_dict[file]["rows"]) // len(db_dict[file]["rows"])
         })
 
     return avg_runs_dict
