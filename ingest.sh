@@ -11,4 +11,4 @@ t=${2:-01-2023}
 db=$TSDB_NAME
 pw=$TSDB_PASSWORD
 
-python ingest_test.py -f "$db" -a "$pw" -p "$pw" -s "$s" -t "$t" -w "$w"
+python benchmark.py -f "$db" -a "$pw" -p "$pw" -s "$s" -t "$t" -w "$w"

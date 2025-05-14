@@ -9,14 +9,14 @@ Setup for databases found in `./setup`, test results in `./results`
 Scripts for running `tsbs` tests and their results
 
 
-### Commands for `ingest_test.py`
+### Commands for `benchmark.py`
 
 | db | command |
 | ---- | ---- |
-| influx | `python ingest_test.py -f influx -a [auth key]` | 
-| questdb | `python ingest_test.py -f questdb` |
-| timescale | `python ingest_test.py -f timescaledb -p [password] -d tsdb` |
-| victoriametrics | `python ingest_test.py -f victoriametrics` |
+| influx | `python benchmark.py -f influx -a [auth key]` | 
+| questdb | `python benchmark.py -f questdb` |
+| timescale | `python benchmark.py -f timescaledb -p [password] -d tsdb` |
+| victoriametrics | `python benchmark.py -f victoriametrics` |
 
 `-s [number]` limits or increases scale of file, default `1000`
 
