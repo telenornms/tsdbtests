@@ -234,8 +234,18 @@ def run_query(path_dict, args, db_setup, query_type):
     Running the query against the database
 
     Parameters:
+        path_dict : dict
+            A dict with the path to TSBS, the use_case, and the file name
+        args : argparse.Namespace
+            The list of inline arguments given to the program 
+        db_setup : dict
+            The dict with all metadata about the selected database
+        query_type : str
+            The type of query to be used
 
     Returns:
+        processed_output : tuple
+            A tuple with the lists with the data for a run: time and queries
     """
 
     # The path to your tsbs/bin folder
@@ -272,6 +282,15 @@ def run_query(path_dict, args, db_setup, query_type):
 def handle_query(output):
     """
     For formatting the output from the query
+
+    Parameters:
+        output : str
+
+    Returns:
+        query_list : list
+            The list with the query/sec
+        time_list : list
+            The list with the time for a run
     """
 
     last_line = ""
@@ -299,7 +318,8 @@ def handle_query(output):
 
 def create_averages(db_dict, args):
     """
-    Creates the averages for each file per metrics, rows and tiem
+    Creates the averages for each file per metrics, rows and time for load
+    and for time and queries for read
 
     Parameters:
         db_dict : dict
@@ -397,11 +417,23 @@ def run_tsbs_load(path_dict, args, db_setup, timestamps):
 
 def run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict):
     """
-    Runs the script for reading data
+    Runs the script for querying the database and reading data
 
     Parameters:
-
+        path_dict : dict
+            A dict with the path to TSBS, and the use_case
+        args : argparse.Namespace
+            The list of inline arguments given to the program
+        db_setup : dict
+            The dict with all metadata about the selected database
+        timestamps : dict
+            A dict with the timestamps
+        read_dict : dict
+            A dict containing all the different query types
     Returns:
+        db_runs_dict : dict
+            A dict containing all the data about the runs; time/run
+            and query/sec
 
     """
     db_runs_dict = {}
