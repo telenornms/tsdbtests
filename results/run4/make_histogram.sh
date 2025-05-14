@@ -32,4 +32,4 @@ done
 
 echo "generated ${filename}"
 
-gnuplot -c comp_histogram.plt "$workers" "$scale"
+gnuplot -c plot_histogram.plt "$workers" "$scale"

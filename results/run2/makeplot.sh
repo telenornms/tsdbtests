@@ -1,6 +1,6 @@
 #!/bin/bash
 
-filename="averages.tsv"
+filename="plot_data.tsv"
 services=("influx" "questdb" "timescaledb" "victoriametrics")
 
 header="\"TestType\""
@@ -29,4 +29,4 @@ done
 
 echo "generated ${filename}"
 
-gnuplot plot
+gnuplot benchmark.plt

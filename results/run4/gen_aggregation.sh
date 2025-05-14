@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Default values
 SCALE_MIN=100
 SCALE_MAX=1000
 SCALE_STEP=100
@@ -8,7 +7,6 @@ WORKERS=20
 DATABASES="influx,questdb,timescaledb,victoriametrics"
 OUTPUT_FILE="database_performance.tsv"
 
-# Parse command line arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
   --scale-min)
@@ -54,7 +52,6 @@ for DB in "${DB_ARRAY[@]}"; do
     # Define the filename
     FILENAME="tsbs_${DB}_s${SCALE}_w${WORKERS}.json"
 
-    # Check if file exists
     if [[ ! -f "$FILENAME" ]]; then
       echo "Warning: File $FILENAME not found. Skipping."
       continue
@@ -62,14 +59,11 @@ for DB in "${DB_ARRAY[@]}"; do
 
     echo "Processing $FILENAME..."
 
-    # Extract and process data using jq
-    # For devops workload
     DEVOPS_ROWS_AVG=$(jq -r '.devops.rows_avg // "null"' "$FILENAME")
     if [[ "$DEVOPS_ROWS_AVG" != "null" ]]; then
       echo -e "${SCALE}\t${DB}\tdevops\t${DEVOPS_ROWS_AVG}" >>"$OUTPUT_FILE"
     fi
 
-    # For iot workload
     IOT_ROWS_AVG=$(jq -r '.iot.rows_avg // "null"' "$FILENAME")
     if [[ "$IOT_ROWS_AVG" != "null" ]]; then
       echo -e "${SCALE}\t${DB}\tiot\t${IOT_ROWS_AVG}" >>"$OUTPUT_FILE"
@@ -79,15 +73,15 @@ for DB in "${DB_ARRAY[@]}"; do
   done
 done
 
-# Sort the output file by scale, engine, and workload
 TMP_FILE="${OUTPUT_FILE}.tmp"
-head -1 "$OUTPUT_FILE" >"$TMP_FILE" # Preserve header
+# Preserve header
+head -1 "$OUTPUT_FILE" >"$TMP_FILE"
 tail -n +2 "$OUTPUT_FILE" | sort -n -k1,1 -k2,2 -k3,3 >>"$TMP_FILE"
 mv "$TMP_FILE" "$OUTPUT_FILE"
 
-echo "Generated TSV file: $OUTPUT_FILE"
 echo "Format: scale | engine | workload | rows_avg"
 echo "Sample:"
 head -5 "$OUTPUT_FILE"
-echo "..."
+echo ""
 echo "Total entries: $(wc -l <"$OUTPUT_FILE") (including header)"
+echo "Finished generating TSV data file: $OUTPUT_FILE"

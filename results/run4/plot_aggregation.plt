@@ -31,7 +31,6 @@ set grid
 set key outside right top
 set pointsize 1.5
 
-# colorscheme
 load 'set2.pal'
 
 set style line 1 lw 3 pt 7
@@ -44,7 +43,6 @@ set style line 7 lw 3 pt 4
 set style line 8 lw 3 pt 6
 set style data linespoints
 
-# Function to get the list of unique databases in the input file
 getDBs = "awk -F'\\t' 'NR>1 {print $2}' ".input_file." | sort | uniq"
 dbList = system(getDBs)
 dbCount = words(dbList)
@@ -59,9 +57,7 @@ set ylabel 'Rows per Second (avg)' font 'Helvetica,14'
 set ytics nomirror
 set format y '%.0f'
 
-##############################################
 # Plot for DevOps workload
-##############################################
 set output 'devops_performance.'.output_format
 set title 'DevOps Workload - Database Performance Comparison' font 'Helvetica,16'
 
@@ -86,9 +82,8 @@ do for [db in dbList] {
 # Execute the plot command
 eval("plot ".plot_cmd)
 
-##############################################
+
 # Plot for IoT workload
-##############################################
 set output 'iot_performance.'.output_format
 set title 'IoT Workload - Database Performance Comparison' font 'Helvetica,16'
 

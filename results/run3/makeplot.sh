@@ -2,7 +2,7 @@
 
 workers=$1
 
-filename="averages_w${workers}.tsv"
+filename="plot_data_w${workers}.tsv"
 services=("influx" "questdb" "timescaledb" "victoriametrics")
 
 header="\"TestType\""
@@ -31,4 +31,4 @@ done
 
 echo "generated ${filename}"
 
-gnuplot -c comp_histogram.plt "$workers"
+gnuplot -c benchmark.plt "$workers"
