@@ -16,7 +16,7 @@ case "$db" in
 "timescaledb")
   flags="$flags -p \"$TSDB_PASSWORD\" -d tsdb"
   ;;
-"influxdb")
+"influx")
   flags="$flags -a \"$TSDB_PASSWORD\""
   ;;
 esac
