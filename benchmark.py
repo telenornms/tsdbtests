@@ -425,7 +425,7 @@ def run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict):
                     "time_run": time_list,
                     "queries": query_list
                 }
-            else: 
+            else:
                 db_runs_dict[query]["time_run"].extend(time_list)
                 db_runs_dict[query]["queries"].extend(query_list)
 
@@ -706,6 +706,8 @@ def main():
         "read_queries": args.queries,
         "start_date": start_date
     }
+
+    output_file = ""
 
     if args.operation == "write":
         output_file = (
