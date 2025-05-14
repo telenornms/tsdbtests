@@ -137,7 +137,7 @@ def load_data(path_dict, args, db_setup, run):
     """
 
     # The path to your tsbs/bin folder
-    run_path = path_dict["main_path"] + "bin/tsbs_load_" + db_setup["db_engine"]
+    run_path = path_dict["main_path"] + "bin/tsbs_load_" + args.format
 
     #The path to your folder for storing tsbs generated load files
     file_path = "/tmp/" + path_dict["test_file"] + "_" + str(run+1) + ".gz"
@@ -150,10 +150,10 @@ def load_data(path_dict, args, db_setup, run):
         " --batch-size " + str(args.batch)
     )
 
-    for command in db_setup["extra_commands"]:
+    for command in db_setup[args.format]["extra_commands"]:
         full_command += command
 
-    print("Loading data for " + db_setup["db_engine"] + " with file: " + file_path)
+    print("Loading data for " + args.format + " with file: " + file_path)
 
     output = subprocess.run(full_command, shell=True, capture_output=True, text=True, check=False)
 
@@ -234,12 +234,22 @@ def run_query(path_dict, args, db_setup, query_type):
     Running the query against the database
 
     Parameters:
+        path_dict : dict
+            A dict with the path to TSBS, the use_case, and the file name
+        args : argparse.Namespace
+            The list of inline arguments given to the program 
+        db_setup : dict
+            The dict with all metadata about the selected database
+        query_type : str
+            The type of query to be used
 
     Returns:
+        processed_output : tuple
+            A tuple with the lists with the data for a run: time and queries
     """
 
     # The path to your tsbs/bin folder
-    run_path = path_dict["main_path"] + "bin/tsbs_run_queries_" + db_setup["db_engine"]
+    run_path = path_dict["main_path"] + "bin/tsbs_run_queries_" + args.format
 
     #The path to your folder for storing tsbs generated files
     file_path = "/tmp/" + path_dict["test_file"] + "_" + query_type + ".gz"
@@ -251,10 +261,10 @@ def run_query(path_dict, args, db_setup, query_type):
         " --workers " + str(args.workers)
     )
 
-    for command in db_setup["extra_commands"]:
+    for command in db_setup[args.format]["extra_commands"]:
         full_command += command
 
-    print("Running query for " + db_setup["db_engine"] + " with file: " + file_path)
+    print("Running query for " + args.format + " with file: " + file_path)
 
     output = subprocess.run(full_command, shell=True, capture_output=True, text=True, check=False)
 
@@ -272,6 +282,15 @@ def run_query(path_dict, args, db_setup, query_type):
 def handle_query(output):
     """
     For formatting the output from the query
+
+    Parameters:
+        output : str
+
+    Returns:
+        query_list : list
+            The list with the query/sec
+        time_list : list
+            The list with the time for a run
     """
 
     last_line = ""
@@ -299,7 +318,8 @@ def handle_query(output):
 
 def create_averages(db_dict, args):
     """
-    Creates the averages for each file per metrics, rows and tiem
+    Creates the averages for each file per metrics, rows and time for load
+    and for time and queries for read
 
     Parameters:
         db_dict : dict
@@ -360,9 +380,9 @@ def run_tsbs_load(path_dict, args, db_setup, timestamps):
     file_number = 0
 
     # Running for each file the number of set runs
-    for test_file in db_setup[args.format]["test_files"]:
-        print("Running with " + test_file)
-        path_dict["test_file"] = test_file
+    for use_case in path_dict["use_case"]:
+        path_dict["test_file"] = args.format + "_" + use_case
+        print("Running with " + path_dict["test_file"])
 
         for run in range(args.runs):
             print("Run number: " + str(run+1))
@@ -373,12 +393,12 @@ def run_tsbs_load(path_dict, args, db_setup, timestamps):
             totals, metrics_list, rows_list, time_list = load_data(
                 path_dict,
                 args,
-                db_setup[args.format],
+                db_setup,
                 run
             )
 
             if run == 0:
-                db_runs_dict[path_dict["use_case"][file_number]] = {
+                db_runs_dict[use_case] = {
                     "time_run": time_list, 
                     "metrics": metrics_list, 
                     "total_metrics": totals[0], 
@@ -386,9 +406,9 @@ def run_tsbs_load(path_dict, args, db_setup, timestamps):
                     "total_rows": totals[1] 
                 }
             else:
-                db_runs_dict[path_dict["use_case"][file_number]]["time_run"].extend(time_list)
-                db_runs_dict[path_dict["use_case"][file_number]]["metrics"].extend(metrics_list)
-                db_runs_dict[path_dict["use_case"][file_number]]["rows"].extend(rows_list)
+                db_runs_dict[use_case]["time_run"].extend(time_list)
+                db_runs_dict[use_case]["metrics"].extend(metrics_list)
+                db_runs_dict[use_case]["rows"].extend(rows_list)
 
         print("All " + str(args.runs)+ " runs completed\n")
         file_number += 1
@@ -397,16 +417,28 @@ def run_tsbs_load(path_dict, args, db_setup, timestamps):
 
 def run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict):
     """
-    Runs the script for reading data
+    Runs the script for querying the database and reading data
 
     Parameters:
-
+        path_dict : dict
+            A dict with the path to TSBS, and the use_case
+        args : argparse.Namespace
+            The list of inline arguments given to the program
+        db_setup : dict
+            The dict with all metadata about the selected database
+        timestamps : dict
+            A dict with the timestamps
+        read_dict : dict
+            A dict containing all the different query types
     Returns:
+        db_runs_dict : dict
+            A dict containing all the data about the runs; time/run
+            and query/sec
 
     """
     db_runs_dict = {}
 
-    path_dict["test_file"] = db_setup[args.format]["test_files"][0]
+    path_dict["test_file"] = args.format + "_devops" 
 
     for query in read_dict:
         print("Running with query: " + read_dict[query])
@@ -416,7 +448,7 @@ def run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict):
             query_list, time_list = run_query(
                 path_dict,
                 args,
-                db_setup[args.format],
+                db_setup,
                 query
             )
 
@@ -655,23 +687,15 @@ def main():
     # The database setups
     db_setup = {
     "influx": {
-        "db_engine": "influx", 
-        "test_files": ["influx_devops", "influx_iot"], 
         "extra_commands": [" --auth-token ", args.auth_token]
         },
      "questdb": {
-         "db_engine": "questdb", 
-         "test_files": ["questdb_devops", "questdb_iot"],
          "extra_commands": []
          },
      "timescaledb": {
-         "db_engine": "timescaledb",
-         "test_files": ["timescaledb_devops", "timescaledb_iot"],
          "extra_commands": [" --db-name ", args.db_name, " --pass ", args.password]
          },
      "victoriametrics": {
-         "db_engine": "victoriametrics",
-         "test_files": ["victoriametrics_devops", "victoriametrics_iot"],
          "extra_commands": []
          }
     }
@@ -697,14 +721,8 @@ def main():
         "use_case": ["devops", "iot"]
     }
 
-    # Removes the opposite file from the db_setup test_files of the chosen use case
     # Also Removes it from path_dict use_case
     if args.use_case:
-        for db in db_setup:
-            if args.use_case == "devops":
-                db_setup[db]["test_files"].pop(1)
-            elif args.use_case == "iot":
-                db_setup[db]["test_files"].pop(0)
         path_dict["use_case"] = [args.use_case]
 
     start_date, timestamps = create_timestamps(args)
