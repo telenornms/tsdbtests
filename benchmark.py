@@ -137,7 +137,7 @@ def load_data(path_dict, args, db_setup, run):
     """
 
     # The path to your tsbs/bin folder
-    run_path = path_dict["main_path"] + "bin/tsbs_load_" + db_setup["db_engine"]
+    run_path = path_dict["main_path"] + "bin/tsbs_load_" + args.format
 
     #The path to your folder for storing tsbs generated load files
     file_path = "/tmp/" + path_dict["test_file"] + "_" + str(run+1) + ".gz"
@@ -150,10 +150,10 @@ def load_data(path_dict, args, db_setup, run):
         " --batch-size " + str(args.batch)
     )
 
-    for command in db_setup["extra_commands"]:
+    for command in db_setup[args.format]["extra_commands"]:
         full_command += command
 
-    print("Loading data for " + db_setup["db_engine"] + " with file: " + file_path)
+    print("Loading data for " + args.format + " with file: " + file_path)
 
     output = subprocess.run(full_command, shell=True, capture_output=True, text=True, check=False)
 
@@ -239,7 +239,7 @@ def run_query(path_dict, args, db_setup, query_type):
     """
 
     # The path to your tsbs/bin folder
-    run_path = path_dict["main_path"] + "bin/tsbs_run_queries_" + db_setup["db_engine"]
+    run_path = path_dict["main_path"] + "bin/tsbs_run_queries_" + args.format
 
     #The path to your folder for storing tsbs generated files
     file_path = "/tmp/" + path_dict["test_file"] + "_" + query_type + ".gz"
@@ -251,10 +251,10 @@ def run_query(path_dict, args, db_setup, query_type):
         " --workers " + str(args.workers)
     )
 
-    for command in db_setup["extra_commands"]:
+    for command in db_setup[args.format]["extra_commands"]:
         full_command += command
 
-    print("Running query for " + db_setup["db_engine"] + " with file: " + file_path)
+    print("Running query for " + args.format + " with file: " + file_path)
 
     output = subprocess.run(full_command, shell=True, capture_output=True, text=True, check=False)
 
@@ -373,7 +373,7 @@ def run_tsbs_load(path_dict, args, db_setup, timestamps):
             totals, metrics_list, rows_list, time_list = load_data(
                 path_dict,
                 args,
-                db_setup[args.format],
+                db_setup,
                 run
             )
 
@@ -416,7 +416,7 @@ def run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict):
             query_list, time_list = run_query(
                 path_dict,
                 args,
-                db_setup[args.format],
+                db_setup,
                 query
             )
 
@@ -655,19 +655,15 @@ def main():
     # The database setups
     db_setup = {
     "influx": {
-        "db_engine": "influx", 
         "extra_commands": [" --auth-token ", args.auth_token]
         },
      "questdb": {
-         "db_engine": "questdb", 
          "extra_commands": []
          },
      "timescaledb": {
-         "db_engine": "timescaledb",
          "extra_commands": [" --db-name ", args.db_name, " --pass ", args.password]
          },
      "victoriametrics": {
-         "db_engine": "victoriametrics",
          "extra_commands": []
          }
     }
