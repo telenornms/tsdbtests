@@ -331,8 +331,7 @@ def create_averages(db_dict, args):
                 "time_run": db_dict[file]["time_run"],
                 "time_avg": round(sum(db_dict[file]["time_run"]) / len(db_dict[file]["time_run"]), 2),
                 "queries_sec": db_dict[file]["queries"],
-                "queries_avg": sum(db_dict[file]["queries"]) // len(db_dict[file]["queries"]),
-                "total_queries": int(args.queries)
+                "queries_avg": sum(db_dict[file]["queries"]) // len(db_dict[file]["queries"])
             })
 
     return avg_runs_dict
@@ -704,7 +703,7 @@ def main():
         "seed": args.seed, 
         "workers": args.workers, 
         "runs": args.runs,
-        "queries": args.queries,
+        "read_queries": args.queries,
         "start_date": start_date
     }
 
@@ -728,6 +727,8 @@ def main():
 
     with open(output_file, "w", encoding="ASCII") as f:
         json.dump(avg_dict, f, indent=4)
+
+    print("Output written to: " + output_file)
 
 if __name__ == "__main__":
     main()
