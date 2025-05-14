@@ -477,7 +477,7 @@ def main():
     # The file path for where tsbs is stored, default is in the project folder
     # The use cases for the files
     path_dict = {
-        "main_path": str(pathlib.Path.cwd()) + "/../tsbs/",
+        "main_path": str(pathlib.Path.cwd()) + "/tsbs/",
         "use_case": ["devops", "iot"]
     }
 
