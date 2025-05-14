@@ -9,6 +9,16 @@ w=${3:-20}
 t=${2:-01-2023}
 
 db=$TSDB_NAME
-pw=$TSDB_PASSWORD
 
-python benchmark.py -f "$db" -a "$pw" -p "$pw" -s "$s" -t "$t" -w "$w"
+flags="-f \"$db\"  -s \"$s\" -t \"$t\" -w \"$w\""
+
+case "$db" in
+"timescaledb")
+  flags="$flags -p \"$TSDB_PASSWORD\" -d tsdb"
+  ;;
+"influxdb")
+  flags="$flags -a \"$TSDB_PASSWORD\""
+  ;;
+esac
+
+eval "python benchmark.py $flags"
