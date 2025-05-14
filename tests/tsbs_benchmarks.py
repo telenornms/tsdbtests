@@ -275,9 +275,10 @@ def handle_query(output):
     """
 
     last_line = ""
-    query_list = []
     query_match = ""
-    time_used = 0
+    time_used = ""
+    query_list = []
+    time_list = []
 
     output_lines = output.stdout.strip().split("\n")
 
@@ -287,13 +288,14 @@ def handle_query(output):
             query_match = re.findall(r"-?\d+\.\d+", line)
 
             if query_match:
-                query_list.extend(query_match)
+                query_list.append(int(round(float(query_match[0]))))
 
         last_line = line
 
     time_used = re.findall(r"-?\d+\.\d+", last_line)
+    time_list.append(round(float(time_used[0]), 2))
     print(query_list)
-    print(time_used)
+    print(time_list)
     print(" ")
     return output_lines
 
