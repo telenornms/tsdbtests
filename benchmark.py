@@ -360,9 +360,9 @@ def run_tsbs_load(path_dict, args, db_setup, timestamps):
     file_number = 0
 
     # Running for each file the number of set runs
-    for test_file in db_setup[args.format]["test_files"]:
-        print("Running with " + test_file)
-        path_dict["test_file"] = test_file
+    for use_case in path_dict["use_case"]:
+        path_dict["test_file"] = args.format + "_" + use_case
+        print("Running with " + path_dict["test_file"])
 
         for run in range(args.runs):
             print("Run number: " + str(run+1))
@@ -378,7 +378,7 @@ def run_tsbs_load(path_dict, args, db_setup, timestamps):
             )
 
             if run == 0:
-                db_runs_dict[path_dict["use_case"][file_number]] = {
+                db_runs_dict[use_case] = {
                     "time_run": time_list, 
                     "metrics": metrics_list, 
                     "total_metrics": totals[0], 
@@ -386,9 +386,9 @@ def run_tsbs_load(path_dict, args, db_setup, timestamps):
                     "total_rows": totals[1] 
                 }
             else:
-                db_runs_dict[path_dict["use_case"][file_number]]["time_run"].extend(time_list)
-                db_runs_dict[path_dict["use_case"][file_number]]["metrics"].extend(metrics_list)
-                db_runs_dict[path_dict["use_case"][file_number]]["rows"].extend(rows_list)
+                db_runs_dict[use_case]["time_run"].extend(time_list)
+                db_runs_dict[use_case]["metrics"].extend(metrics_list)
+                db_runs_dict[use_case]["rows"].extend(rows_list)
 
         print("All " + str(args.runs)+ " runs completed\n")
         file_number += 1
@@ -406,7 +406,7 @@ def run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict):
     """
     db_runs_dict = {}
 
-    path_dict["test_file"] = db_setup[args.format]["test_files"][0]
+    path_dict["test_file"] = args.format + "_devops" 
 
     for query in read_dict:
         print("Running with query: " + read_dict[query])
@@ -656,22 +656,18 @@ def main():
     db_setup = {
     "influx": {
         "db_engine": "influx", 
-        "test_files": ["influx_devops", "influx_iot"], 
         "extra_commands": [" --auth-token ", args.auth_token]
         },
      "questdb": {
          "db_engine": "questdb", 
-         "test_files": ["questdb_devops", "questdb_iot"],
          "extra_commands": []
          },
      "timescaledb": {
          "db_engine": "timescaledb",
-         "test_files": ["timescaledb_devops", "timescaledb_iot"],
          "extra_commands": [" --db-name ", args.db_name, " --pass ", args.password]
          },
      "victoriametrics": {
          "db_engine": "victoriametrics",
-         "test_files": ["victoriametrics_devops", "victoriametrics_iot"],
          "extra_commands": []
          }
     }
@@ -697,14 +693,8 @@ def main():
         "use_case": ["devops", "iot"]
     }
 
-    # Removes the opposite file from the db_setup test_files of the chosen use case
     # Also Removes it from path_dict use_case
     if args.use_case:
-        for db in db_setup:
-            if args.use_case == "devops":
-                db_setup[db]["test_files"].pop(1)
-            elif args.use_case == "iot":
-                db_setup[db]["test_files"].pop(0)
         path_dict["use_case"] = [args.use_case]
 
     start_date, timestamps = create_timestamps(args)
