@@ -431,6 +431,10 @@ def run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict):
 
         print("All " + str(args.runs)+ " runs completed\n")
 
+        # Removes the file after done loading
+        path_file_path = pathlib.Path("/tmp/" + path_dict["test_file"] + "_" + query + ".gz")
+        pathlib.Path.unlink(path_file_path)
+
     return db_runs_dict
 
 def create_timestamps(args):
@@ -486,6 +490,13 @@ def handle_args():
         help="Which type of operation you want to run",
         choices=["read", "write"],
         required=True,
+        type=str
+    )
+    parser.add_argument(
+        "-u",
+        "--use_case",
+        help="If you only want to ingest one use case",
+        choices=["devops", "iot"],
         type=str
     )
 
