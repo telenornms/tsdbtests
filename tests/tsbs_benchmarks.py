@@ -703,7 +703,8 @@ def main():
         "scale": args.scale, 
         "seed": args.seed, 
         "workers": args.workers, 
-        "runs": args.runs, 
+        "runs": args.runs,
+        "queries": args.queries,
         "start_date": start_date
     }
 
