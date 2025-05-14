@@ -676,14 +676,6 @@ def main():
          }
     }
 
-    # Removes the opposite file from the db_setup test_files of the chosen use case
-    if args.use_case:
-        for db in db_setup:
-            if args.use_case == "devops":
-                db_setup[db]["test_files"].pop(1)
-            elif args.use_case == "iot":
-                db_setup[db]["test_files"].pop(0)
-
     read_dict = {
         "single_groupby_1_1_1": "single-groupby-1-1-1", 
         "single_groupby_1_1_12": "single-groupby-1-1-12", 
@@ -704,6 +696,16 @@ def main():
         "main_path": str(pathlib.Path.cwd()) + "/tsbs/",
         "use_case": ["devops", "iot"]
     }
+
+    # Removes the opposite file from the db_setup test_files of the chosen use case
+    # Also Removes it from path_dict use_case
+    if args.use_case:
+        for db in db_setup:
+            if args.use_case == "devops":
+                db_setup[db]["test_files"].pop(1)
+            elif args.use_case == "iot":
+                db_setup[db]["test_files"].pop(0)
+        path_dict["use_case"] = [args.use_case]
 
     start_date, timestamps = create_timestamps(args)
 
