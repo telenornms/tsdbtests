@@ -487,7 +487,7 @@ def handle_args():
     parser.add_argument(
         "-o",
         "--operation",
-        help="Which type of operation you want to run",
+        help="Which type of operation you want to run, REQUIRED",
         choices=["read", "write"],
         required=True,
         type=str
@@ -504,7 +504,7 @@ def handle_args():
     parser.add_argument(
         "-f", 
         "--format", 
-        help="The database format",
+        help="The database format, REQUIRED",
         choices=["influx", "questdb", "timescaledb", "victoriametrics"],
         required=True,
         type=str
@@ -562,7 +562,7 @@ def handle_args():
     parser.add_argument(
         "-t",
         "--time",
-        help="The start time for the data generation, format YYYY-MM",
+        help="The start time for the data generation, format YYYY-MM, REQUIRED",
         type=str,
         required=True
     )
@@ -675,6 +675,14 @@ def main():
          "extra_commands": []
          }
     }
+
+    # Removes the opposite file from the db_setup test_files of the chosen use case
+    if args.use_case:
+        for db in db_setup:
+            if args.use_case == "devops":
+                db_setup[db]["test_files"].pop(1)
+            elif args.use_case == "iot":
+                db_setup[db]["test_files"].pop(0)
 
     read_dict = {
         "single_groupby_1_1_1": "single-groupby-1-1-1", 
