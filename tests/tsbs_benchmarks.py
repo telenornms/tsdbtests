@@ -412,8 +412,7 @@ def run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict):
     for query in read_dict:
         print("Running with query: " + read_dict[query])
         generate_query(path_dict, args, timestamps, read_dict, query)
-        #for run in range(args.runs):
-        for run in range(1):
+        for run in range(args.runs):
             print("Run number: " + str(run+1))
             query_list, time_list = run_query(
                 path_dict,
@@ -427,6 +426,9 @@ def run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict):
                     "time_run": time_list,
                     "queries": query_list
                 }
+            else: 
+                db_runs_dict[query]["time_run"].extend(time_list)
+                db_runs_dict[query]["queries"].extend(query_list)
 
         print("All " + str(args.runs)+ " runs completed\n")
 
