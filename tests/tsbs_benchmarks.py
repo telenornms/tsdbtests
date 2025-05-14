@@ -36,7 +36,7 @@ def generate_data(path_dict, args, timestamps, file_number, run):
     # Sets it to 1 if scale is smaller than 10
     if use_case == "devops":
         new_scale = args.scale//10
-        new_scale = new_scale if new_scale >= 1 else 1
+        new_scale = new_scale if new_scale >= 10 else 10
     else:
         new_scale = args.scale
 
@@ -83,7 +83,7 @@ def generate_query(path_dict, args, timestamps, read_dict, query_type):
     # Devops data are 10x the size of the others, so need to shrink
     # Sets it to 1 if scale is smaller than 10
     new_scale = args.scale//10
-    new_scale = new_scale if new_scale >= 1 else 1
+    new_scale = new_scale if new_scale >= 10 else 10
 
     file_path = "/tmp/" + path_dict["test_file"] + "_" + query_type + ".gz"
 
@@ -294,12 +294,10 @@ def handle_query(output):
 
     time_used = re.findall(r"-?\d+\.\d+", last_line)
     time_list.append(round(float(time_used[0]), 2))
-    print(query_list)
-    print(time_list)
-    print(" ")
-    return output_lines
 
-def create_averages(db_dict):
+    return query_list, time_list
+
+def create_averages(db_dict, args):
     """
     Creates the averages for each file per metrics, rows and tiem
 
@@ -315,19 +313,27 @@ def create_averages(db_dict):
     """
 
     avg_runs_dict = {}
-
     for file in db_dict:
         avg_runs_dict[file] = {}
-        avg_runs_dict[file].update({
-            "time_run": db_dict[file]["time_run"],
-            "time_avg": round(sum(db_dict[file]["time_run"]) / len(db_dict[file]["time_run"]), 2),
-            "metrics_sec": db_dict[file]["metrics"], 
-            "total_metrics": db_dict[file]["total_metrics"],
-            "metrics_avg": sum(db_dict[file]["metrics"]) // len(db_dict[file]["metrics"]),
-            "rows_sec": db_dict[file]["rows"], 
-            "total_rows": db_dict[file]["total_rows"],
-            "rows_avg": sum(db_dict[file]["rows"]) // len(db_dict[file]["rows"])
-        })
+        if args.operation == "write":
+            avg_runs_dict[file].update({
+                "time_run": db_dict[file]["time_run"],
+                "time_avg": round(sum(db_dict[file]["time_run"]) / len(db_dict[file]["time_run"]), 2),
+                "metrics_sec": db_dict[file]["metrics"], 
+                "total_metrics": db_dict[file]["total_metrics"],
+                "metrics_avg": sum(db_dict[file]["metrics"]) // len(db_dict[file]["metrics"]),
+                "rows_sec": db_dict[file]["rows"], 
+                "total_rows": db_dict[file]["total_rows"],
+                "rows_avg": sum(db_dict[file]["rows"]) // len(db_dict[file]["rows"])
+            })
+        elif args.operation == "read":
+            avg_runs_dict[file].update({
+                "time_run": db_dict[file]["time_run"],
+                "time_avg": round(sum(db_dict[file]["time_run"]) / len(db_dict[file]["time_run"]), 2),
+                "queries_sec": db_dict[file]["queries"],
+                "queries_avg": sum(db_dict[file]["queries"]) // len(db_dict[file]["queries"]),
+                "total_queries": int(args.queries)
+            })
 
     return avg_runs_dict
 
@@ -402,19 +408,27 @@ def run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict):
     db_runs_dict = {}
 
     path_dict["test_file"] = db_setup[args.format]["test_files"][0]
-    print("Running with " + path_dict["test_file"])
 
     for query in read_dict:
+        print("Running with query: " + read_dict[query])
         generate_query(path_dict, args, timestamps, read_dict, query)
         #for run in range(args.runs):
         for run in range(1):
             print("Run number: " + str(run+1))
-            run_query(
+            query_list, time_list = run_query(
                 path_dict,
                 args,
                 db_setup[args.format],
                 query
             )
+
+            if run == 0:
+                db_runs_dict[query] = {
+                    "time_run": time_list,
+                    "queries": query_list
+                }
+
+        print("All " + str(args.runs)+ " runs completed\n")
 
     return db_runs_dict
 
@@ -680,7 +694,7 @@ def main():
     elif args.operation == "read":
         db_runs_dict = run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict)
 
-    avg_dict = create_averages(db_runs_dict)
+    avg_dict = create_averages(db_runs_dict, args)
 
     avg_dict["metadata"] = {
         "db_engine": args.format, 
@@ -705,6 +719,7 @@ def main():
             "_read" +
             "_s" + str(args.scale) +
             "_w" + str(args.workers) +
+            "_q" + str(args.queries) +
             ".json"
         )
 
