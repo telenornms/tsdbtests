@@ -11,9 +11,9 @@ import json
 import argparse
 import datetime
 
-def generate_data(path_dict, args, timestamps, file_number, run):
+def generate_files(path_dict, args, timestamps, run_dict, query_dict):
     """
-    Generates files using tsbs_generate
+    Generates files using tsbs_generate_<data/queries>
 
     Parameters:
         path_dict : dict
@@ -22,15 +22,98 @@ def generate_data(path_dict, args, timestamps, file_number, run):
             The list of inline arguments given to the program
         timestamps : dict
             A dict with the timestamps
-        run : int
-            The current run of the use case
-        file_number : int
-            The index for the use case, 0 = devops, 1 = iot
+        run_dict : dict
+            A dict containing the current file_number and the current run
+        query_dict : dict
+            A dict containing the query type and a JSON safe query name
+    """
+
+    run_path = path_dict["main_path"] + "bin/tsbs_generate_"
+
+    file_path = "/tmp/" + path_dict["test_file"] + "_"
+
+    use_case = path_dict["use_case"][run_dict["file_number"]]
+
+    # Devops data are 10x the size of the others, so need to shrink
+    # Sets it to 10 if scale is smaller than 10
+    if use_case == "devops":
+        new_scale = args.scale//10
+        new_scale = new_scale if new_scale >= 10 else 10
+    else:
+        new_scale = args.scale
+
+    full_command = (
+        " --use-case=" + use_case +
+        " --format=" + args.format +
+        " --seed=" + str(args.seed) +
+        " --scale=" + str(new_scale)
+    )
+
+    if args.operation == "write":
+        run_path = run_path + "data"
+        file_path = file_path + str(run_dict["run"]+1) + ".gz"
+
+        full_command = (
+            run_path +
+            full_command +
+            " --timestamp-start=" + 
+            timestamps[str(run_dict["run"] + (args.runs * run_dict["file_number"]))][0] +
+            " --timestamp-end=" + 
+            timestamps[str(run_dict["run"] + (args.runs * run_dict["file_number"]))][1] +
+            " --log-interval=" + str(args.log_time) + "s" + 
+            " | gzip > " + 
+            file_path
+        )
+
+    elif args.operation == "read":
+        run_path = run_path + "queries"
+        file_path = file_path + query_dict["query_name"] + ".gz"
+
+            # Generates a new timestamp for the end point at 1 second past data generation
+        time_end = timestamps[str(args.runs-1)][1].split("T")
+        time_end = (
+            datetime.datetime.strptime(time_end[0]+" "+time_end[1][:-1], "%Y-%m-%d %H:%M:%S") +
+            datetime.timedelta(seconds=1)
+        )
+
+        date_str = str(time_end).split(" ", maxsplit=1)
+        time_end = date_str[0] + "T" + date_str[1] + "Z"
+
+        full_command = (
+            run_path +
+            full_command + 
+            " --timestamp-start=" + timestamps["0"][0] +
+            " --timestamp-end=" + time_end +
+            " --queries=" + str(args.queries) +
+            " --query-type=" + query_dict["query"] +
+            " | gzip > " + 
+            file_path
+        )
+
+    full_command = full_command + " | gzip > " + file_path
+
+    print("Creating file: " + file_path)
+
+    subprocess.run(full_command, shell=True, check=False)
+
+def generate_data(path_dict, args, timestamps, run_dict):
+    """
+    Generates files using tsbs_generate_data
+
+    Parameters:
+        path_dict : dict
+            A dict with the path to TSBS, and the use_case
+        args : argparse.Namespace
+            The list of inline arguments given to the program
+        timestamps : dict
+            A dict with the timestamps
+        run_dict : dict
+            A dict containing the current file_number and the current run
     """
 
     run_path = path_dict["main_path"] + "bin/tsbs_generate_data"
 
-    use_case = path_dict["use_case"][file_number]
+    use_case = path_dict["use_case"][run_dict["file_number"]]
 
     # Devops data are 10x the size of the others, so need to shrink
     # Sets it to 1 if scale is smaller than 10
@@ -40,7 +123,7 @@ def generate_data(path_dict, args, timestamps, file_number, run):
     else:
         new_scale = args.scale
 
-    file_path = "/tmp/" + path_dict["test_file"] + "_" + str(run+1) + ".gz"
+    file_path = "/tmp/" + path_dict["test_file"] + "_" + str(run_dict["run"]+1) + ".gz"
 
     print("Creating file: " + file_path)
 
@@ -50,8 +133,10 @@ def generate_data(path_dict, args, timestamps, file_number, run):
         " --format=" + args.format +
         " --seed=" + str(args.seed) +
         " --scale=" + str(new_scale) +
-        " --timestamp-start=" + timestamps[str(run + (args.runs * file_number))][0] +
-        " --timestamp-end=" + timestamps[str(run + (args.runs * file_number))][1] +
+        " --timestamp-start=" + 
+        timestamps[str(run_dict["run"] + (args.runs * run_dict["file_number"]))][0] +
+        " --timestamp-end=" + 
+        timestamps[str(run_dict["run"] + (args.runs * run_dict["file_number"]))][1] +
         " --log-interval=" + str(args.log_time) + "s" + 
         " | gzip > " + 
         file_path
@@ -59,9 +144,9 @@ def generate_data(path_dict, args, timestamps, file_number, run):
 
     subprocess.run(full_command, shell=True, check=False)
 
-def generate_query(path_dict, args, timestamps, read_dict, query_type):
+def generate_query(path_dict, args, timestamps, query_dict, run_dict):
     """
-    Generates files using tsbs_generate
+    Generates files using tsbs_generate_queries
 
     Parameters:
         path_dict : dict
@@ -70,22 +155,20 @@ def generate_query(path_dict, args, timestamps, read_dict, query_type):
             The list of inline arguments given to the program
         timestamps : dict
             A dict with the timestamps
-        read_dict : dict
-            A dict with all the queries and a JSON friendly format
-        query_type : str
-            The type of query to be ran, chosen from the list of query types
+        query_dict : dict
+            A dict containing the query type and a JSON safe query name
     """
 
     run_path = path_dict["main_path"] + "bin/tsbs_generate_queries"
 
-    use_case = path_dict["use_case"][0]
+    use_case = path_dict["use_case"][run_dict["file_number"]]
 
     # Devops data are 10x the size of the others, so need to shrink
     # Sets it to 1 if scale is smaller than 10
     new_scale = args.scale//10
     new_scale = new_scale if new_scale >= 10 else 10
 
-    file_path = "/tmp/" + path_dict["test_file"] + "_" + query_type + ".gz"
+    file_path = "/tmp/" + path_dict["test_file"] + "_" + query_dict["query_name"] + ".gz"
 
     # Generates a new timestamp for the end point at 1 second past data generation
     time_end = timestamps[str(args.runs-1)][1].split("T")
@@ -108,7 +191,7 @@ def generate_query(path_dict, args, timestamps, read_dict, query_type):
         " --timestamp-end=" + time_end +
         " --format=" + args.format +
         " --queries=" + str(args.queries) +
-        " --query-type=" + read_dict[query_type] +
+        " --query-type=" + query_dict["query"] +
         " | gzip > " + 
         file_path
     )
@@ -387,7 +470,8 @@ def run_tsbs_load(path_dict, args, db_setup, timestamps):
         for run in range(args.runs):
             print("Run number: " + str(run+1))
             # Generating the data through TSBS
-            generate_data(path_dict, args, timestamps, file_number, run)
+            run_dict = {"file_number": file_number, "run": run}
+            generate_files(path_dict, args, timestamps, run_dict)
 
             # Loading the data through TSBS
             totals, metrics_list, rows_list, time_list = load_data(
@@ -438,11 +522,14 @@ def run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict):
     """
     db_runs_dict = {}
 
-    path_dict["test_file"] = args.format + "_devops" 
+    path_dict["test_file"] = args.format + "_devops"
+
+    run_dict = {"file_number": 0}
 
     for query in read_dict:
         print("Running with query: " + read_dict[query])
-        generate_query(path_dict, args, timestamps, read_dict, query)
+        query_dict = {"query": read_dict[query], "query_name": query}
+        generate_files(path_dict, args, timestamps, query_dict, run_dict)
         for run in range(args.runs):
             print("Run number: " + str(run+1))
             query_list, time_list = run_query(
