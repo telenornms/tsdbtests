@@ -143,65 +143,12 @@ def process_tsbs(path_dict, args, db_setup):
             print(output.stderr)
             sys.exit("Database error!")
 
+    processed_output = ()
+
     if args.operation == "write": 
         processed_output = handle_load(output)
     if args.operation == "read":
         processed_output = handle_query(output)
-
-    return processed_output
-
-def load_data(path_dict, args, db_setup):
-    """
-    Loads the data into the database using tsbs_load_<db_engine>
-    and gets the number of metrics per sec, rows per sec, overall time per run
-    and total number of metrics and rows
-
-    Parameters:
-        path_dict : dict
-            A dict with the path to TSBS, the use_case, and the file name
-        args : argparse.Namespace
-            The list of inline arguments given to the program 
-        db_setup : dict
-            The dict with all metadata about the selected database
-
-    Returns:
-        processed_output : tuple
-            A tuple containing totals, metrics_list, rows_list, time_list from handle_load()
-    """
-
-    # The path to your tsbs/bin folder
-    run_path = path_dict["main_path"] + "bin/tsbs_load_" + args.format
-
-    #The path to your folder for storing tsbs generated load files
-    file_path = "/tmp/" + path_dict["test_file"] + ".gz"
-
-    full_command = (
-        "cat " + file_path +
-        " | gunzip | " +
-        run_path +
-        " --workers " + str(args.workers) + 
-        " --batch-size " + str(args.batch)
-    )
-
-    for arg in db_setup[args.format]["extra_args"]:
-        full_command += arg
-
-    print("Loading data for " + args.format + " with file: " + file_path)
-
-    output = subprocess.run(full_command, shell=True, capture_output=True, text=True, check=False)
-
-    # Checks if there has been any error in loading with tsbs,
-    # and prints the error and exits the program
-    for line in output.stderr.strip().split("\n"):
-        if re.findall(r'panic', line, re.IGNORECASE):
-            print(output.stderr)
-            sys.exit("Database error!")
-
-    processed_output = handle_load(output)
-
-    # Removes the file after done loading
-    path_file_path = pathlib.Path(file_path)
-    pathlib.Path.unlink(path_file_path)
 
     return processed_output
 
@@ -261,54 +208,6 @@ def handle_load(output):
     time_list.append(round(float(time_match[0]), 2))
 
     return totals, metrics_list, rows_list, time_list
-
-def run_query(path_dict, args, db_setup):
-    """
-    Running the query against the database
-
-    Parameters:
-        path_dict : dict
-            A dict with the path to TSBS, the use_case, and the file name
-        args : argparse.Namespace
-            The list of inline arguments given to the program 
-        db_setup : dict
-            The dict with all metadata about the selected database
-
-    Returns:
-        processed_output : tuple
-            A tuple with the lists with the data for a run: time and queries
-    """
-
-    # The path to your tsbs/bin folder
-    run_path = path_dict["main_path"] + "bin/tsbs_run_queries_" + args.format
-
-    #The path to your folder for storing tsbs generated files
-    file_path = "/tmp/" + path_dict["test_file"] + ".gz"
-
-    full_command = (
-        "cat " + file_path +
-        " | gunzip | " +
-        run_path +
-        " --workers " + str(args.workers)
-    )
-
-    for arg in db_setup[args.format]["extra_args"]:
-        full_command += arg
-
-    print("Running query for " + args.format + " with file: " + file_path)
-
-    output = subprocess.run(full_command, shell=True, capture_output=True, text=True, check=False)
-
-    # Checks if there has been any error in loading with tsbs,
-    # and prints the error and exits the program
-    for line in output.stderr.strip().split("\n"):
-        if re.findall(r'panic', line, re.IGNORECASE):
-            print(output.stderr)
-            sys.exit("Database error!")
-
-    processed_output = handle_query(output)
-
-    return processed_output
 
 def handle_query(output):
     """
