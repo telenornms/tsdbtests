@@ -668,25 +668,23 @@ def main():
         "start_date": start_date
     }
 
-    output_file = ""
+    output_file = "tsbs_" + args.format
 
     if args.operation == "write":
-        output_file = (
-            "tsbs_" + args.format +
+        output_file += (
             "_write" +
             "_s" + str(args.scale) +
-            "_w" + str(args.workers) +
-            ".json"
+            "_w" + str(args.workers)
         )
     elif args.operation == "read":
-        output_file = (
-            "tsbs_" + args.format +
+        output_file += (
             "_read" +
             "_s" + str(args.scale) +
             "_w" + str(args.workers) +
-            "_q" + str(args.queries) +
-            ".json"
+            "_q" + str(args.queries)
         )
+
+    output_file += ".json"
 
     with open(output_file, "w", encoding="ASCII") as f:
         json.dump(avg_dict, f, indent=4)
