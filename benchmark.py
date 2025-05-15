@@ -362,12 +362,7 @@ def run_tsbs_load(path_dict, args, db_setup, timestamps):
             generate_files(path_dict, args, timestamps, run_dict, {})
 
             # Loading the data through TSBS
-            totals, metrics_list, rows_list, time_list = load_data(
-                path_dict,
-                args,
-                db_setup,
-                run
-            )
+            totals, metrics_list, rows_list, time_list = load_data(path_dict, args, db_setup)
 
             if run == 0:
                 db_runs_dict[use_case] = {
@@ -420,12 +415,7 @@ def run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict):
         generate_files(path_dict, args, timestamps, run_dict, query_dict)
         for run in range(args.runs):
             print("Run number: " + str(run+1))
-            query_list, time_list = run_query(
-                path_dict,
-                args,
-                db_setup,
-                query
-            )
+            query_list, time_list = run_query(path_dict, args, db_setup)
 
             if run == 0:
                 db_runs_dict[query] = {
