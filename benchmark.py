@@ -114,11 +114,11 @@ def process_tsbs(path_dict, args, db_setup):
     #The path to your folder storing the TSBS generated files
     file_path = "/tmp/" + path_dict["test_file"] + ".gz"
 
-    print("Loading data for " + args.format + " with file: " + file_path)
-
     if args.operation == "write":
+        print("Loading data for " + args.format + " with file: " + file_path)
         run_path += "load_" + args.format
     elif args.operation == "read":
+        print("Running query for " + args.format + " with file: " + file_path)
         run_path += "run_queries_" + args.format
 
     full_command = (
@@ -143,7 +143,10 @@ def process_tsbs(path_dict, args, db_setup):
             print(output.stderr)
             sys.exit("Database error!")
 
-    processed_output = handle_load(output)
+    if args.operation == "write": 
+        processed_output = handle_load(output)
+    if args.operation == "read":
+        processed_output = handle_query(output)
 
     return processed_output
 
