@@ -88,7 +88,64 @@ def generate_files(path_dict, args, timestamps, run_dict, query_dict):
 
     print("Creating file: " + file_path)
 
-    subprocess.run(full_command, shell=True, check=False)
+    subprocess.run(full_command, shell=True, capture_output=True, check=False)
+
+def process_tsbs(path_dict, args, db_setup):
+    """
+    Loads the data into the database using tsbs_load_<db_engine>
+    Runs the queries against the database using tsbs_run_queries_<db_engine>
+
+    Parameters:
+        path_dict : dict
+            A dict with the path to TSBS, the use_case, and the file name
+        args : argparse.Namespace
+            The list of inline arguments given to the program 
+        db_setup : dict
+            The dict with all metadata about the selected database
+
+    Returns:
+        processed_output : tuple
+            A tuple containing all the lists from handle_load/queries
+    """
+
+    # The path to your tsbs/bin folder
+    run_path = path_dict["main_path"] + "bin/tsbs_"
+
+    #The path to your folder storing the TSBS generated files
+    file_path = "/tmp/" + path_dict["test_file"] + ".gz"
+
+    print("Loading data for " + args.format + " with file: " + file_path)
+
+    if args.operation == "write":
+        run_path += "load_" + args.format
+    elif args.operation == "read":
+        run_path += "run_queries_" + args.format
+
+    full_command = (
+        "cat " + file_path +
+        " | gunzip | " +
+        run_path +
+        " --workers " + str(args.workers)
+    )
+
+    if args.operation == "write":
+        full_command += " --batch-size " + str(args.batch)
+
+    for arg in db_setup[args.format]["extra_args"]:
+        full_command += arg
+
+    output = subprocess.run(full_command, shell=True, capture_output=True, text=True, check=False)
+
+    # Checks if there has been any error in loading with tsbs,
+    # and prints the error and exits the program
+    for line in output.stderr.strip().split("\n"):
+        if re.findall(r'panic', line, re.IGNORECASE):
+            print(output.stderr)
+            sys.exit("Database error!")
+
+    processed_output = handle_load(output)
+
+    return processed_output
 
 def load_data(path_dict, args, db_setup):
     """
@@ -123,8 +180,8 @@ def load_data(path_dict, args, db_setup):
         " --batch-size " + str(args.batch)
     )
 
-    for command in db_setup[args.format]["extra_commands"]:
-        full_command += command
+    for arg in db_setup[args.format]["extra_args"]:
+        full_command += arg
 
     print("Loading data for " + args.format + " with file: " + file_path)
 
@@ -232,8 +289,8 @@ def run_query(path_dict, args, db_setup):
         " --workers " + str(args.workers)
     )
 
-    for command in db_setup[args.format]["extra_commands"]:
-        full_command += command
+    for arg in db_setup[args.format]["extra_args"]:
+        full_command += arg
 
     print("Running query for " + args.format + " with file: " + file_path)
 
@@ -295,12 +352,12 @@ def create_averages(db_dict, args):
     Parameters:
         db_dict : dict
             A dictionary containing all the data about all the runs; time/run, metrics/sec, 
-            rows/sec, and total metrics and rows
+            rows/sec, and total metrics and rows or queries/sec
     
     Returns:
         avg_runs_dict : dict
             The same dict as db, but including the average metrics/sec/file, 
-            rows/sec/file, and time/run/file
+            rows/sec/file, and time/run/file or queries/sec/file
     """
 
     avg_runs_dict = {}
@@ -362,7 +419,7 @@ def run_tsbs_load(path_dict, args, db_setup, timestamps):
             generate_files(path_dict, args, timestamps, run_dict, {})
 
             # Loading the data through TSBS
-            totals, metrics_list, rows_list, time_list = load_data(path_dict, args, db_setup)
+            totals, metrics_list, rows_list, time_list = process_tsbs(path_dict, args, db_setup)
 
             if run == 0:
                 db_runs_dict[use_case] = {
@@ -376,6 +433,10 @@ def run_tsbs_load(path_dict, args, db_setup, timestamps):
                 db_runs_dict[use_case]["t_run"].extend(time_list)
                 db_runs_dict[use_case]["metrics"].extend(metrics_list)
                 db_runs_dict[use_case]["rows"].extend(rows_list)
+
+            # Removes the file after done loading
+            path_file_path = pathlib.Path("/tmp/" + path_dict["test_file"] + ".gz")
+            pathlib.Path.unlink(path_file_path)
 
         print("All " + str(args.runs)+ " runs completed\n")
         file_number += 1
@@ -415,7 +476,7 @@ def run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict):
         generate_files(path_dict, args, timestamps, run_dict, query_dict)
         for run in range(args.runs):
             print("Run number: " + str(run+1))
-            query_list, time_list = run_query(path_dict, args, db_setup)
+            query_list, time_list = process_tsbs(path_dict, args, db_setup)
 
             if run == 0:
                 db_runs_dict[query] = {
@@ -482,6 +543,14 @@ def handle_args():
 
     # General program running
     parser.add_argument(
+        "-f", 
+        "--format", 
+        help="The database format, REQUIRED",
+        choices=["influx", "questdb", "timescaledb", "victoriametrics"],
+        required=True,
+        type=str
+    )
+    parser.add_argument(
         "-o",
         "--operation",
         help="Which type of operation you want to run, REQUIRED",
@@ -497,15 +566,7 @@ def handle_args():
         type=str
     )
 
-    # Arguments for data load
-    parser.add_argument(
-        "-f", 
-        "--format", 
-        help="The database format, REQUIRED",
-        choices=["influx", "questdb", "timescaledb", "victoriametrics"],
-        required=True,
-        type=str
-    )
+    # Arguments for data load/query run
     parser.add_argument(
         "-d",
         "--db_name",
@@ -651,18 +712,10 @@ def main():
 
     # The database setups
     db_setup = {
-    "influx": {
-        "extra_commands": [" --auth-token ", args.auth_token]
-        },
-     "questdb": {
-         "extra_commands": []
-         },
-     "timescaledb": {
-         "extra_commands": [" --db-name ", args.db_name, " --pass ", args.password]
-         },
-     "victoriametrics": {
-         "extra_commands": []
-         }
+        "influx": {"extra_args": [" --auth-token ", args.auth_token]},
+        "questdb": {"extra_args": []},
+        "timescaledb": {"extra_args": [" --db-name ", args.db_name, " --pass ", args.password]},
+        "victoriametrics": {"extra_args": []}
     }
 
     read_dict = {
