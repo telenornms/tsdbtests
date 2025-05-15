@@ -145,7 +145,7 @@ def process_tsbs(path_dict, args, db_setup):
 
     processed_output = ()
 
-    if args.operation == "write": 
+    if args.operation == "write":
         processed_output = handle_load(output)
     if args.operation == "read":
         processed_output = handle_query(output)
@@ -472,7 +472,7 @@ def handle_args():
     parser.add_argument(
         "-d",
         "--db_name",
-        help="The database you are using for test, REQUIRED for TimeScale",
+        help="The database you are using for test",
         type=str
     )
     parser.add_argument(
@@ -548,8 +548,10 @@ def handle_args():
         if args.auth_token is None:
             sys.exit("Influx needs --auth_token")
     elif args.format == "timescaledb":
-        if args.db_name is None or args.password is None:
-            sys.exit("TimeScale needs --db_name and --password")
+        if args.password is None:
+            sys.exit("TimeScale needs --password")
+        if args.db_name is None:
+            args.db_name = "benchmark"
 
     args.workers = fix_args({"workers": args.workers})
 
