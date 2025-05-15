@@ -77,7 +77,7 @@ def generate_files(path_dict, args, timestamps, run_dict, query_dict):
 
         full_command = (
             run_path +
-            full_command + 
+            full_command +
             " --timestamp-start=" + timestamps["0"][0] +
             " --timestamp-end=" + time_end +
             " --queries=" + str(args.queries) +
@@ -90,7 +90,7 @@ def generate_files(path_dict, args, timestamps, run_dict, query_dict):
 
     subprocess.run(full_command, shell=True, check=False)
 
-def load_data(path_dict, args, db_setup, run):
+def load_data(path_dict, args, db_setup):
     """
     Loads the data into the database using tsbs_load_<db_engine>
     and gets the number of metrics per sec, rows per sec, overall time per run
@@ -103,8 +103,6 @@ def load_data(path_dict, args, db_setup, run):
             The list of inline arguments given to the program 
         db_setup : dict
             The dict with all metadata about the selected database
-        run : int
-            The current run of the use case
 
     Returns:
         processed_output : tuple
@@ -204,7 +202,7 @@ def handle_load(output):
 
     return totals, metrics_list, rows_list, time_list
 
-def run_query(path_dict, args, db_setup, query_type):
+def run_query(path_dict, args, db_setup):
     """
     Running the query against the database
 
@@ -215,8 +213,6 @@ def run_query(path_dict, args, db_setup, query_type):
             The list of inline arguments given to the program 
         db_setup : dict
             The dict with all metadata about the selected database
-        query_type : str
-            The type of query to be used
 
     Returns:
         processed_output : tuple
@@ -312,8 +308,8 @@ def create_averages(db_dict, args):
         avg_runs_dict[file] = {}
         if args.operation == "write":
             avg_runs_dict[file].update({
-                "time_run": db_dict[file]["time_run"],
-                "time_avg": round(sum(db_dict[file]["time_run"]) / len(db_dict[file]["time_run"]), 2),
+                "t_run": db_dict[file]["t_run"],
+                "time_avg": round(sum(db_dict[file]["t_run"]) / len(db_dict[file]["t_run"]), 2),
                 "metrics_sec": db_dict[file]["metrics"], 
                 "total_metrics": db_dict[file]["total_metrics"],
                 "metrics_avg": sum(db_dict[file]["metrics"]) // len(db_dict[file]["metrics"]),
@@ -323,8 +319,8 @@ def create_averages(db_dict, args):
             })
         elif args.operation == "read":
             avg_runs_dict[file].update({
-                "time_run": db_dict[file]["time_run"],
-                "time_avg": round(sum(db_dict[file]["time_run"]) / len(db_dict[file]["time_run"]), 2),
+                "t_run": db_dict[file]["t_run"],
+                "time_avg": round(sum(db_dict[file]["t_run"]) / len(db_dict[file]["t_run"]), 2),
                 "queries_sec": db_dict[file]["queries"],
                 "queries_avg": sum(db_dict[file]["queries"]) // len(db_dict[file]["queries"])
             })
@@ -375,14 +371,14 @@ def run_tsbs_load(path_dict, args, db_setup, timestamps):
 
             if run == 0:
                 db_runs_dict[use_case] = {
-                    "time_run": time_list, 
+                    "t_run": time_list, 
                     "metrics": metrics_list, 
                     "total_metrics": totals[0], 
                     "rows": rows_list, 
                     "total_rows": totals[1] 
                 }
             else:
-                db_runs_dict[use_case]["time_run"].extend(time_list)
+                db_runs_dict[use_case]["t_run"].extend(time_list)
                 db_runs_dict[use_case]["metrics"].extend(metrics_list)
                 db_runs_dict[use_case]["rows"].extend(rows_list)
 
@@ -433,17 +429,17 @@ def run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict):
 
             if run == 0:
                 db_runs_dict[query] = {
-                    "time_run": time_list,
+                    "t_run": time_list,
                     "queries": query_list
                 }
             else:
-                db_runs_dict[query]["time_run"].extend(time_list)
+                db_runs_dict[query]["t_run"].extend(time_list)
                 db_runs_dict[query]["queries"].extend(query_list)
 
         print("All " + str(args.runs)+ " runs completed\n")
 
         # Removes the file after done loading
-        path_file_path = pathlib.Path("/tmp/" + path_dict["test_file"] + "_" + query + ".gz")
+        path_file_path = pathlib.Path("/tmp/" + path_dict["test_file"] + ".gz")
         pathlib.Path.unlink(path_file_path)
 
     return db_runs_dict
