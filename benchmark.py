@@ -175,9 +175,9 @@ def handle_load(output):
             The list of time for each run, rounded to 2 decimals
     """
 
-    metrics_list = []
-    rows_list = []
-    time_list = []
+    # metrics_list = []
+    # rows_list = []
+    # time_list = []
     extracted_floats = []
     totals = []
     time_match = ""
@@ -186,7 +186,6 @@ def handle_load(output):
 
     for line in output_lines:
         if "(" in line and ")" in line:
-            # Look for integer patterns that are not part of floats
             # This regex finds integers that are not followed by a period and digit
             int_matches = re.findall(r"-?\b\d+\b(?!\.\d)", line)
 
@@ -207,15 +206,15 @@ def handle_load(output):
                     # Convert match to actual float values
                     extracted_floats.append(float_match[0])
 
-    metrics_list.append(int(round(float(extracted_floats[0]))))
-    rows_list.append(int(round(float(extracted_floats[1]))))
-    time_list.append(round(float(time_match[0]), 2))
+    # metrics_list.append(int(round(float(extracted_floats[0]))))
+    # rows_list.append(int(round(float(extracted_floats[1]))))
+    # time_list.append(round(float(time_match[0]), 2))
 
     load_return_dict = {
         "totals": totals,
-        "metrics_list": metrics_list,
-        "rows_list": rows_list,
-        "time_list": time_list
+        "metrics_list": int(round(float(extracted_floats[0]))),
+        "rows_list": int(round(float(extracted_floats[1]))),
+        "time_list": round(float(time_match[0]), 2)
     }
 
     return load_return_dict
@@ -236,9 +235,9 @@ def handle_query(output):
 
     last_line = ""
     query_match = ""
-    time_used = ""
+    # time_used = ""
     query_list = []
-    time_list = []
+    # time_list = []
 
     output_lines = output.stdout.strip().split("\n")
 
@@ -252,12 +251,12 @@ def handle_query(output):
 
         last_line = line
 
-    time_used = re.findall(r"-?\d+\.\d+", last_line)
-    time_list.append(round(float(time_used[0]), 2))
+    # time_used = re.findall(r"-?\d+\.\d+", last_line)
+    # time_list.append(round(float(time_used[0]), 2))
 
     query_return_dict = {
         "query_list": query_list,
-        "time_list": time_list
+        "time_list": round(float(re.findall(r"-?\d+\.\d+", last_line)[0]), 2)
     }
 
     return query_return_dict
@@ -348,7 +347,6 @@ def running_handler(path_dict, args, db_setup, timestamps, read_dict):
                 generate_files(path_dict, args, timestamps, run_dict, query_dict)
 
                 load_return_dict = process_tsbs(path_dict, args, db_setup)
-                #totals, metrics_list, rows_list, time_list = process_tsbs(path_dict, args, db_setup)
 
                 if run == 0:
                     db_runs_dict[key_name] = {
@@ -370,7 +368,6 @@ def running_handler(path_dict, args, db_setup, timestamps, read_dict):
                 generate_files(path_dict, args, timestamps, run_dict, query_dict)
 
                 query_return_dict = process_tsbs(path_dict, args, db_setup)
-                # query_list, time_list = process_tsbs(path_dict, args, db_setup)
 
                 if run == 0:
                     db_runs_dict[key_name] = {
