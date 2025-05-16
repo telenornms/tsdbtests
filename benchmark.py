@@ -45,7 +45,7 @@ def generate_files(path_dict, args, timestamps, run_dict, query_dict):
     full_command = (
         " --use-case=" + use_case +
         " --format=" + args.format +
-        " --seed=" + str(args.seed) +
+        " --seed=" + str(args.seed+run_dict["run"]) +
         " --scale=" + str(new_scale)
     )
 
@@ -65,7 +65,7 @@ def generate_files(path_dict, args, timestamps, run_dict, query_dict):
     elif args.operation == "read":
         run_path = run_path + "queries"
 
-            # Generates a new timestamp for the end point at 1 second past data generation
+        # Generates a new timestamp for the end point at 1 second past data generation
         time_end = timestamps[str(args.runs-1)][1].split("T")
         time_end = (
             datetime.datetime.strptime(time_end[0]+" "+time_end[1][:-1], "%Y-%m-%d %H:%M:%S") +
@@ -150,6 +150,10 @@ def process_tsbs(path_dict, args, db_setup):
     if args.operation == "read":
         processed_output = handle_query(output)
 
+    # Removes the file after done loading
+    path_file_path = pathlib.Path("/tmp/" + path_dict["test_file"] + ".gz")
+    pathlib.Path.unlink(path_file_path)
+
     return processed_output
 
 def handle_load(output):
@@ -171,19 +175,15 @@ def handle_load(output):
             The list of time for each run, rounded to 2 decimals
     """
 
-    metrics_list = []
-    rows_list = []
-    time_list = []
     extracted_floats = []
     totals = []
-    time_match = ""
+    time_match = []
 
     output_lines = output.stdout.strip().split("\n")
 
     for line in output_lines:
         if "(" in line and ")" in line:
-            # Look for integer patterns that are not part of floats
-            # This regex finds integers that are not followed by a period and digit
+            # Finds all integers that are not followed by a period and digit
             int_matches = re.findall(r"-?\b\d+\b(?!\.\d)", line)
 
             totals.append(int(int_matches[0]))
@@ -194,20 +194,21 @@ def handle_load(output):
             # Find all text within parentheses in the line
             parenthesized_content = re.findall(r"\((.*?)\)", line)
 
-            # Extract float numbers from the parenthesized content
             for content in parenthesized_content:
                 # Look for float patterns in the parenthesized content
                 float_match = re.findall(r"-?\d+\.\d+", content)
 
                 if float_match:
-                    # Convert match to actual float values
                     extracted_floats.append(float_match[0])
 
-    metrics_list.append(int(round(float(extracted_floats[0]))))
-    rows_list.append(int(round(float(extracted_floats[1]))))
-    time_list.append(round(float(time_match[0]), 2))
+    load_return_dict = {
+        "totals": totals,
+        "metrics": int(round(float(extracted_floats[0]))),
+        "rows": int(round(float(extracted_floats[1]))),
+        "time": round(float(time_match[0]), 2)
+    }
 
-    return totals, metrics_list, rows_list, time_list
+    return load_return_dict
 
 def handle_query(output):
     """
@@ -224,27 +225,26 @@ def handle_query(output):
     """
 
     last_line = ""
-    query_match = ""
-    time_used = ""
-    query_list = []
-    time_list = []
+    query_match = 0
 
     output_lines = output.stdout.strip().split("\n")
 
     for line in output_lines:
         if "(" in line and ")" in line:
             # Finds all floats to grab the time per run
-            query_match = re.findall(r"-?\d+\.\d+", line)
+            found_query = re.findall(r"-?\d+\.\d+", line)
 
-            if query_match:
-                query_list.append(int(round(float(query_match[0]))))
+            if found_query:
+                query_match = int(round(float(found_query[0])))
 
         last_line = line
 
-    time_used = re.findall(r"-?\d+\.\d+", last_line)
-    time_list.append(round(float(time_used[0]), 2))
+    query_return_dict = {
+        "query": query_match,
+        "time": round(float(re.findall(r"-?\d+\.\d+", last_line)[0]), 2)
+    }
 
-    return query_list, time_list
+    return query_return_dict
 
 def create_averages(db_dict, args):
     """
@@ -254,12 +254,12 @@ def create_averages(db_dict, args):
     Parameters:
         db_dict : dict
             A dictionary containing all the data about all the runs; time/run, metrics/sec, 
-            rows/sec, and total metrics and rows or queries/sec
+            rows/sec, and total metrics and rows; or queries/sec
     
     Returns:
         avg_runs_dict : dict
-            The same dict as db, but including the average metrics/sec/file, 
-            rows/sec/file, and time/run/file or queries/sec/file
+            The same dict as db, but including the average time/run/file, metrics/sec/file, 
+            and rows/sec/file; or queries/sec/file
     """
 
     avg_runs_dict = {}
@@ -267,7 +267,7 @@ def create_averages(db_dict, args):
         avg_runs_dict[file] = {}
         if args.operation == "write":
             avg_runs_dict[file].update({
-                "t_run": db_dict[file]["t_run"],
+                "time_run": db_dict[file]["t_run"],
                 "time_avg": round(sum(db_dict[file]["t_run"]) / len(db_dict[file]["t_run"]), 2),
                 "metrics_sec": db_dict[file]["metrics"], 
                 "total_metrics": db_dict[file]["total_metrics"],
@@ -278,7 +278,7 @@ def create_averages(db_dict, args):
             })
         elif args.operation == "read":
             avg_runs_dict[file].update({
-                "t_run": db_dict[file]["t_run"],
+                "time_run": db_dict[file]["t_run"],
                 "time_avg": round(sum(db_dict[file]["t_run"]) / len(db_dict[file]["t_run"]), 2),
                 "queries_sec": db_dict[file]["queries"],
                 "queries_avg": sum(db_dict[file]["queries"]) // len(db_dict[file]["queries"])
@@ -286,68 +286,9 @@ def create_averages(db_dict, args):
 
     return avg_runs_dict
 
-def run_tsbs_load(path_dict, args, db_setup, timestamps):
+def running_handler(path_dict, args, db_setup, timestamps, read_dict):
     """
-    Runs the tsbs scripts for ingesting data
-
-    Parameters:
-        path_dict : dict
-            A dict with the path to TSBS, and the use_case
-        args : argparse.Namespace
-            The list of inline arguments given to the program
-        db_setup : dict
-            The dict with all metadata about the selected database
-        timestamps : dict
-            A dict with the timestamps
-
-    Returns:
-        db_runs_dict : dict
-            A dictionary containing all the data about all the runs; time/run, 
-            metrics/sec, rows/sec, and total metrics and rows
-    """
-
-    db_runs_dict = {}
-    file_number = 0
-
-    # Running for each file the number of set runs
-    for use_case in path_dict["use_case"]:
-        path_dict["test_file"] = args.format + "_" + use_case
-        print("Running with " + path_dict["test_file"])
-
-        for run in range(args.runs):
-            print("Run number: " + str(run+1))
-            # Generating the data through TSBS
-            run_dict = {"file_number": file_number, "run": run}
-            generate_files(path_dict, args, timestamps, run_dict, {})
-
-            # Loading the data through TSBS
-            totals, metrics_list, rows_list, time_list = process_tsbs(path_dict, args, db_setup)
-
-            if run == 0:
-                db_runs_dict[use_case] = {
-                    "t_run": time_list, 
-                    "metrics": metrics_list, 
-                    "total_metrics": totals[0], 
-                    "rows": rows_list, 
-                    "total_rows": totals[1] 
-                }
-            else:
-                db_runs_dict[use_case]["t_run"].extend(time_list)
-                db_runs_dict[use_case]["metrics"].extend(metrics_list)
-                db_runs_dict[use_case]["rows"].extend(rows_list)
-
-            # Removes the file after done loading
-            path_file_path = pathlib.Path("/tmp/" + path_dict["test_file"] + ".gz")
-            pathlib.Path.unlink(path_file_path)
-
-        print("All " + str(args.runs)+ " runs completed\n")
-        file_number += 1
-
-    return db_runs_dict
-
-def run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict):
-    """
-    Runs the script for querying the database and reading data
+    Runs the TSBS scripts for ingesting and querying data
 
     Parameters:
         path_dict : dict
@@ -360,40 +301,70 @@ def run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict):
             A dict with the timestamps
         read_dict : dict
             A dict containing all the different query types
+
     Returns:
         db_runs_dict : dict
-            A dict containing all the data about the runs; time/run
-            and query/sec
-
+            A dictionary containing all the data about all the runs; time/run, 
+            metrics/sec, rows/sec, and total metrics and rows
     """
+
+    use_dict = {}
     db_runs_dict = {}
+    file_number = 0
 
-    path_dict["test_file"] = args.format + "_devops"
+    if args.operation == "write":
+        use_dict = path_dict["use_case"]
+    elif args.operation == "read":
+        use_dict = read_dict
 
-    run_dict = {"file_number": 0}
 
-    for query in read_dict:
-        print("Running with query: " + read_dict[query])
-        query_dict = {"query": read_dict[query], "query_name": query}
-        generate_files(path_dict, args, timestamps, run_dict, query_dict)
+    for key_name in use_dict:
+        path_dict["test_file"] = args.format + "_" + key_name
+        print("Running with " + path_dict["test_file"])
+
         for run in range(args.runs):
             print("Run number: " + str(run+1))
-            query_list, time_list = process_tsbs(path_dict, args, db_setup)
 
-            if run == 0:
-                db_runs_dict[query] = {
-                    "t_run": time_list,
-                    "queries": query_list
-                }
-            else:
-                db_runs_dict[query]["t_run"].extend(time_list)
-                db_runs_dict[query]["queries"].extend(query_list)
+            if args.operation == "write":
+                run_dict = {"file_number": file_number, "run": run}
+                query_dict = {}
+
+                generate_files(path_dict, args, timestamps, run_dict, query_dict)
+
+                load_return_dict = process_tsbs(path_dict, args, db_setup)
+
+                if run == 0:
+                    db_runs_dict[key_name] = {
+                        "t_run": [load_return_dict["time"]], 
+                        "metrics": [load_return_dict["metrics"]], 
+                        "total_metrics": load_return_dict["totals"][0], 
+                        "rows": [load_return_dict["rows"]], 
+                        "total_rows": load_return_dict["totals"][1] 
+                    }
+                else:
+                    db_runs_dict[key_name]["t_run"].append(load_return_dict["time"])
+                    db_runs_dict[key_name]["metrics"].append(load_return_dict["metrics"])
+                    db_runs_dict[key_name]["rows"].append(load_return_dict["rows"])
+
+            elif args.operation == "read":
+                run_dict = {"file_number": 0, "run": run}
+                query_dict = {"query": read_dict[key_name], "query_name": key_name}
+
+                generate_files(path_dict, args, timestamps, run_dict, query_dict)
+
+                query_return_dict = process_tsbs(path_dict, args, db_setup)
+
+                if run == 0:
+                    db_runs_dict[key_name] = {
+                        "t_run": [query_return_dict["time"]],
+                        "queries": [query_return_dict["query"]]
+                    }
+                else:
+                    db_runs_dict[key_name]["t_run"].append(query_return_dict["time"])
+                    db_runs_dict[key_name]["queries"].append(query_return_dict["query"])
 
         print("All " + str(args.runs)+ " runs completed\n")
-
-        # Removes the file after done loading
-        path_file_path = pathlib.Path("/tmp/" + path_dict["test_file"] + ".gz")
-        pathlib.Path.unlink(path_file_path)
+        file_number += 1
 
     return db_runs_dict
 
@@ -649,12 +620,7 @@ def main():
 
     start_date, timestamps = create_timestamps(args)
 
-    db_runs_dict = {}
-
-    if args.operation == "write":
-        db_runs_dict = run_tsbs_load(path_dict, args, db_setup, timestamps)
-    elif args.operation == "read":
-        db_runs_dict = run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict)
+    db_runs_dict = running_handler(path_dict, args, db_setup, timestamps, read_dict)
 
     avg_dict = create_averages(db_runs_dict, args)
 
