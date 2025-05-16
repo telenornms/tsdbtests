@@ -212,9 +212,9 @@ def handle_load(output):
 
     load_return_dict = {
         "totals": totals,
-        "metrics_list": int(round(float(extracted_floats[0]))),
-        "rows_list": int(round(float(extracted_floats[1]))),
-        "time_list": round(float(time_match[0]), 2)
+        "metrics": int(round(float(extracted_floats[0]))),
+        "rows": int(round(float(extracted_floats[1]))),
+        "time": round(float(time_match[0]), 2)
     }
 
     return load_return_dict
@@ -236,7 +236,7 @@ def handle_query(output):
     last_line = ""
     query_match = ""
     # time_used = ""
-    query_list = []
+    # query_list = []
     # time_list = []
 
     output_lines = output.stdout.strip().split("\n")
@@ -247,7 +247,7 @@ def handle_query(output):
             query_match = re.findall(r"-?\d+\.\d+", line)
 
             if query_match:
-                query_list.append(int(round(float(query_match[0]))))
+                query_match = int(round(float(query_match[0])))
 
         last_line = line
 
@@ -255,8 +255,8 @@ def handle_query(output):
     # time_list.append(round(float(time_used[0]), 2))
 
     query_return_dict = {
-        "query_list": query_list,
-        "time_list": round(float(re.findall(r"-?\d+\.\d+", last_line)[0]), 2)
+        "query": query_match,
+        "time": round(float(re.findall(r"-?\d+\.\d+", last_line)[0]), 2)
     }
 
     return query_return_dict
@@ -350,16 +350,16 @@ def running_handler(path_dict, args, db_setup, timestamps, read_dict):
 
                 if run == 0:
                     db_runs_dict[key_name] = {
-                        "t_run": load_return_dict["time_list"], 
-                        "metrics": load_return_dict["metrics_list"], 
+                        "t_run": load_return_dict["time"], 
+                        "metrics": load_return_dict["metrics"], 
                         "total_metrics": load_return_dict["totals"][0], 
-                        "rows": load_return_dict["rows_list"], 
+                        "rows": load_return_dict["rows"], 
                         "total_rows": load_return_dict["totals"][1] 
                     }
                 else:
-                    db_runs_dict[key_name]["t_run"].extend(load_return_dict["time_list"])
-                    db_runs_dict[key_name]["metrics"].extend(load_return_dict["metrics_list"])
-                    db_runs_dict[key_name]["rows"].extend(load_return_dict["rows_list"])
+                    db_runs_dict[key_name]["t_run"].append(load_return_dict["time"])
+                    db_runs_dict[key_name]["metrics"].append(load_return_dict["metrics"])
+                    db_runs_dict[key_name]["rows"].append(load_return_dict["rows"])
 
             elif args.operation == "read":
                 run_dict = {"file_number": 0, "run": run}
@@ -371,12 +371,12 @@ def running_handler(path_dict, args, db_setup, timestamps, read_dict):
 
                 if run == 0:
                     db_runs_dict[key_name] = {
-                        "t_run": query_return_dict["time_list"],
-                        "queries": query_return_dict["query_list"]
+                        "t_run": query_return_dict["time"],
+                        "queries": query_return_dict["query"]
                     }
                 else:
-                    db_runs_dict[key_name]["t_run"].extend(query_return_dict["time_list"])
-                    db_runs_dict[key_name]["queries"].extend(query_return_dict["query_list"])
+                    db_runs_dict[key_name]["t_run"].append(query_return_dict["time"])
+                    db_runs_dict[key_name]["queries"].append(query_return_dict["query"])
 
         print("All " + str(args.runs)+ " runs completed\n")
         file_number += 1
