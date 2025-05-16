@@ -211,7 +211,9 @@ def handle_load(output):
     rows_list.append(int(round(float(extracted_floats[1]))))
     time_list.append(round(float(time_match[0]), 2))
 
-    return totals, metrics_list, rows_list, time_list
+    load_return_list = [totals, metrics_list, rows_list, time_list]
+
+    return load_return_list
 
 def handle_query(output):
     """
@@ -248,7 +250,9 @@ def handle_query(output):
     time_used = re.findall(r"-?\d+\.\d+", last_line)
     time_list.append(round(float(time_used[0]), 2))
 
-    return query_list, time_list
+    query_return_list = [query_list, time_list]
+
+    return query_return_list
 
 def create_averages(db_dict, args):
     """
@@ -335,20 +339,21 @@ def running_handler(path_dict, args, db_setup, timestamps, read_dict):
 
                 generate_files(path_dict, args, timestamps, run_dict, query_dict)
 
-                totals, metrics_list, rows_list, time_list = process_tsbs(path_dict, args, db_setup)
+                load_return_list = process_tsbs(path_dict, args, db_setup)
+                #totals, metrics_list, rows_list, time_list = process_tsbs(path_dict, args, db_setup)
 
                 if run == 0:
                     db_runs_dict[key_name] = {
-                        "t_run": time_list, 
-                        "metrics": metrics_list, 
-                        "total_metrics": totals[0], 
-                        "rows": rows_list, 
-                        "total_rows": totals[1] 
+                        "t_run": load_return_list[3], 
+                        "metrics": load_return_list[1], 
+                        "total_metrics": load_return_list[0][0], 
+                        "rows": load_return_list[2], 
+                        "total_rows": load_return_list[0][1] 
                     }
                 else:
-                    db_runs_dict[key_name]["t_run"].extend(time_list)
-                    db_runs_dict[key_name]["metrics"].extend(metrics_list)
-                    db_runs_dict[key_name]["rows"].extend(rows_list)
+                    db_runs_dict[key_name]["t_run"].extend(load_return_list[3])
+                    db_runs_dict[key_name]["metrics"].extend(load_return_list[1])
+                    db_runs_dict[key_name]["rows"].extend(load_return_list[2])
 
             elif args.operation == "read":
                 run_dict = {"file_number": 0, "run": run}
@@ -356,16 +361,17 @@ def running_handler(path_dict, args, db_setup, timestamps, read_dict):
 
                 generate_files(path_dict, args, timestamps, run_dict, query_dict)
 
-                query_list, time_list = process_tsbs(path_dict, args, db_setup)
+                query_return_list = process_tsbs(path_dict, args, db_setup)
+                # query_list, time_list = process_tsbs(path_dict, args, db_setup)
 
                 if run == 0:
                     db_runs_dict[key_name] = {
-                        "t_run": time_list,
-                        "queries": query_list
+                        "t_run": query_return_list[1],
+                        "queries": query_return_list[0]
                     }
                 else:
-                    db_runs_dict[key_name]["t_run"].extend(time_list)
-                    db_runs_dict[key_name]["queries"].extend(query_list)
+                    db_runs_dict[key_name]["t_run"].extend(query_return_list[1])
+                    db_runs_dict[key_name]["queries"].extend(query_return_list[0])
 
         print("All " + str(args.runs)+ " runs completed\n")
         file_number += 1
