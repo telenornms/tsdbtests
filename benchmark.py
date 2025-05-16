@@ -35,10 +35,10 @@ def generate_files(path_dict, args, timestamps, run_dict, query_dict):
     use_case = path_dict["use_case"][run_dict["file_number"]]
 
     # Devops data are 10x the size of the others, so need to shrink
-    # Sets it to 5 if scale is smaller than 5
+    # Sets it to 10 if scale is smaller than 10
     if use_case == "devops":
         new_scale = args.scale//10
-        new_scale = new_scale if new_scale >= 5 else 5
+        new_scale = new_scale if new_scale >= 10 else 10
     else:
         new_scale = args.scale
 
