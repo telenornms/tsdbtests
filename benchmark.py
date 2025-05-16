@@ -292,7 +292,7 @@ def create_averages(db_dict, args):
 
 def running_handler(path_dict, args, db_setup, timestamps, read_dict):
     """
-    Runs the tsbs scripts for ingesting data
+    Runs the TSBS scripts for ingesting and querying data
 
     Parameters:
         path_dict : dict
@@ -303,6 +303,8 @@ def running_handler(path_dict, args, db_setup, timestamps, read_dict):
             The dict with all metadata about the selected database
         timestamps : dict
             A dict with the timestamps
+        read_dict : dict
+            A dict containing all the different query types
 
     Returns:
         db_runs_dict : dict
@@ -310,6 +312,7 @@ def running_handler(path_dict, args, db_setup, timestamps, read_dict):
             metrics/sec, rows/sec, and total metrics and rows
     """
 
+    use_dict = {}
     db_runs_dict = {}
     file_number = 0
 
@@ -320,7 +323,7 @@ def running_handler(path_dict, args, db_setup, timestamps, read_dict):
 
 
     for key_name in use_dict:
-        path_dict["test_files"] = args.format + "_" + key_name
+        path_dict["test_file"] = args.format + "_" + key_name
         print("Running with " + path_dict["test_file"])
 
         for run in range(args.runs):
@@ -332,7 +335,6 @@ def running_handler(path_dict, args, db_setup, timestamps, read_dict):
 
                 generate_files(path_dict, args, timestamps, run_dict, query_dict)
 
-                # Loading the data through TSBS
                 totals, metrics_list, rows_list, time_list = process_tsbs(path_dict, args, db_setup)
 
                 if run == 0:
@@ -353,8 +355,7 @@ def running_handler(path_dict, args, db_setup, timestamps, read_dict):
                 query_dict = {"query": read_dict[key_name], "query_name": key_name}
 
                 generate_files(path_dict, args, timestamps, run_dict, query_dict)
-                
-                # Reading the data through TSBS
+
                 query_list, time_list = process_tsbs(path_dict, args, db_setup)
 
                 if run == 0:
@@ -368,118 +369,6 @@ def running_handler(path_dict, args, db_setup, timestamps, read_dict):
 
         print("All " + str(args.runs)+ " runs completed\n")
         file_number += 1
-
-    return db_runs_dict
-
-def run_tsbs_load(path_dict, args, db_setup, timestamps):
-    """
-    Runs the tsbs scripts for ingesting data
-
-    Parameters:
-        path_dict : dict
-            A dict with the path to TSBS, and the use_case
-        args : argparse.Namespace
-            The list of inline arguments given to the program
-        db_setup : dict
-            The dict with all metadata about the selected database
-        timestamps : dict
-            A dict with the timestamps
-
-    Returns:
-        db_runs_dict : dict
-            A dictionary containing all the data about all the runs; time/run, 
-            metrics/sec, rows/sec, and total metrics and rows
-    """
-
-    db_runs_dict = {}
-    file_number = 0
-
-    # Running for each file the number of set runs
-    for use_case in path_dict["use_case"]:
-        path_dict["test_file"] = args.format + "_" + use_case
-        print("Running with " + path_dict["test_file"])
-
-        for run in range(args.runs):
-            print("Run number: " + str(run+1))
-            # Generating the data through TSBS
-            run_dict = {"file_number": file_number, "run": run}
-            generate_files(path_dict, args, timestamps, run_dict, {})
-
-            # Loading the data through TSBS
-            totals, metrics_list, rows_list, time_list = process_tsbs(path_dict, args, db_setup)
-
-            if run == 0:
-                db_runs_dict[use_case] = {
-                    "t_run": time_list, 
-                    "metrics": metrics_list, 
-                    "total_metrics": totals[0], 
-                    "rows": rows_list, 
-                    "total_rows": totals[1] 
-                }
-            else:
-                db_runs_dict[use_case]["t_run"].extend(time_list)
-                db_runs_dict[use_case]["metrics"].extend(metrics_list)
-                db_runs_dict[use_case]["rows"].extend(rows_list)
-
-            # Removes the file after done loading
-            path_file_path = pathlib.Path("/tmp/" + path_dict["test_file"] + ".gz")
-            pathlib.Path.unlink(path_file_path)
-
-        print("All " + str(args.runs)+ " runs completed\n")
-        file_number += 1
-
-    return db_runs_dict
-
-def run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict):
-    """
-    Runs the script for querying the database and reading data
-
-    Parameters:
-        path_dict : dict
-            A dict with the path to TSBS, and the use_case
-        args : argparse.Namespace
-            The list of inline arguments given to the program
-        db_setup : dict
-            The dict with all metadata about the selected database
-        timestamps : dict
-            A dict with the timestamps
-        read_dict : dict
-            A dict containing all the different query types
-    Returns:
-        db_runs_dict : dict
-            A dict containing all the data about the runs; time/run
-            and query/sec
-
-    """
-    db_runs_dict = {}
-
-    path_dict["test_file"] = args.format + "_devops"
-
-    run_dict = {"file_number": 0, "run": 0}
-
-    for query in read_dict:
-        print("Running with query: " + read_dict[query])
-        query_dict = {"query": read_dict[query], "query_name": query}
-        generate_files(path_dict, args, timestamps, run_dict, query_dict)
-
-        for run in range(args.runs):
-            print("Run number: " + str(run+1))
-            query_list, time_list = process_tsbs(path_dict, args, db_setup)
-
-            if run == 0:
-                db_runs_dict[query] = {
-                    "t_run": time_list,
-                    "queries": query_list
-                }
-            else:
-                db_runs_dict[query]["t_run"].extend(time_list)
-                db_runs_dict[query]["queries"].extend(query_list)
-
-        print("All " + str(args.runs)+ " runs completed\n")
-
-        # Removes the file after done loading
-        path_file_path = pathlib.Path("/tmp/" + path_dict["test_file"] + ".gz")
-        pathlib.Path.unlink(path_file_path)
 
     return db_runs_dict
 
@@ -735,14 +624,7 @@ def main():
 
     start_date, timestamps = create_timestamps(args)
 
-    # db_runs_dict = {}
-
     db_runs_dict = running_handler(path_dict, args, db_setup, timestamps, read_dict)
-
-    # if args.operation == "write":
-    #     db_runs_dict = run_tsbs_load(path_dict, args, db_setup, timestamps)
-    # elif args.operation == "read":
-    #     db_runs_dict = run_tsbs_query(path_dict, args, db_setup, timestamps, read_dict)
 
     avg_dict = create_averages(db_runs_dict, args)
 
