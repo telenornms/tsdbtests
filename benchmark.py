@@ -350,10 +350,10 @@ def running_handler(path_dict, args, db_setup, timestamps, read_dict):
 
                 if run == 0:
                     db_runs_dict[key_name] = {
-                        "t_run": load_return_dict["time"], 
-                        "metrics": load_return_dict["metrics"], 
+                        "t_run": [load_return_dict["time"]], 
+                        "metrics": [load_return_dict["metrics"]], 
                         "total_metrics": load_return_dict["totals"][0], 
-                        "rows": load_return_dict["rows"], 
+                        "rows": [load_return_dict["rows"]], 
                         "total_rows": load_return_dict["totals"][1] 
                     }
                 else:
@@ -371,8 +371,8 @@ def running_handler(path_dict, args, db_setup, timestamps, read_dict):
 
                 if run == 0:
                     db_runs_dict[key_name] = {
-                        "t_run": query_return_dict["time"],
-                        "queries": query_return_dict["query"]
+                        "t_run": [query_return_dict["time"]],
+                        "queries": [query_return_dict["query"]]
                     }
                 else:
                     db_runs_dict[key_name]["t_run"].append(query_return_dict["time"])
