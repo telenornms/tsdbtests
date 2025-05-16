@@ -35,10 +35,10 @@ def generate_files(path_dict, args, timestamps, run_dict, query_dict):
     use_case = path_dict["use_case"][run_dict["file_number"]]
 
     # Devops data are 10x the size of the others, so need to shrink
-    # Sets it to 10 if scale is smaller than 10
+    # Sets it to 5 if scale is smaller than 5
     if use_case == "devops":
         new_scale = args.scale//10
-        new_scale = new_scale if new_scale >= 10 else 10
+        new_scale = new_scale if new_scale >= 5 else 5
     else:
         new_scale = args.scale
 
@@ -175,18 +175,15 @@ def handle_load(output):
             The list of time for each run, rounded to 2 decimals
     """
 
-    # metrics_list = []
-    # rows_list = []
-    # time_list = []
     extracted_floats = []
     totals = []
-    time_match = ""
+    time_match = []
 
     output_lines = output.stdout.strip().split("\n")
 
     for line in output_lines:
         if "(" in line and ")" in line:
-            # This regex finds integers that are not followed by a period and digit
+            # Finds all integers that are not followed by a period and digit
             int_matches = re.findall(r"-?\b\d+\b(?!\.\d)", line)
 
             totals.append(int(int_matches[0]))
@@ -197,18 +194,12 @@ def handle_load(output):
             # Find all text within parentheses in the line
             parenthesized_content = re.findall(r"\((.*?)\)", line)
 
-            # Extract float numbers from the parenthesized content
             for content in parenthesized_content:
                 # Look for float patterns in the parenthesized content
                 float_match = re.findall(r"-?\d+\.\d+", content)
 
                 if float_match:
-                    # Convert match to actual float values
                     extracted_floats.append(float_match[0])
-
-    # metrics_list.append(int(round(float(extracted_floats[0]))))
-    # rows_list.append(int(round(float(extracted_floats[1]))))
-    # time_list.append(round(float(time_match[0]), 2))
 
     load_return_dict = {
         "totals": totals,
@@ -234,25 +225,19 @@ def handle_query(output):
     """
 
     last_line = ""
-    query_match = ""
-    # time_used = ""
-    # query_list = []
-    # time_list = []
+    query_match = 0
 
     output_lines = output.stdout.strip().split("\n")
 
     for line in output_lines:
         if "(" in line and ")" in line:
             # Finds all floats to grab the time per run
-            query_match = re.findall(r"-?\d+\.\d+", line)
+            found_query = re.findall(r"-?\d+\.\d+", line)
 
-            if query_match:
-                query_match = int(round(float(query_match[0])))
+            if found_query:
+                query_match = int(round(float(found_query[0])))
 
         last_line = line
-
-    # time_used = re.findall(r"-?\d+\.\d+", last_line)
-    # time_list.append(round(float(time_used[0]), 2))
 
     query_return_dict = {
         "query": query_match,
