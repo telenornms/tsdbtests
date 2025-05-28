@@ -165,14 +165,8 @@ def handle_load(output):
             The full output from the completed run
     
     Returns:
-        totals : list
-            The list of total numbers of metrics and rows
-        metrics_list : list
-            The list of metrics/sec for each run, rounded to 0 decimals
-        rows_list : list
-            The list of rows/sec for each run, rounded to 0 decimals
-        time_list : list
-            The list of time for each run, rounded to 2 decimals
+        load_return_dit : dict
+            A dict containing total metrics, metrics/sec, rows/sec and time/run
     """
 
     extracted_floats = []
@@ -218,10 +212,8 @@ def handle_query(output):
         output : str
 
     Returns:
-        query_list : list
-            The list with the query/sec
-        time_list : list
-            The list with the time for a run
+        query_return_dict : dict
+            A dict with the query amount and time
     """
 
     last_line = ""
@@ -411,7 +403,35 @@ def handle_args():
     """
 
     parser = argparse.ArgumentParser(
-        description="A script for testing TSBS"
+        description="""
+        A script for testing TSBS using multiple runs
+        
+        Example usage write:
+        
+        python benchmark.py -f influx -a <influx auth-token> 
+        -u devops -o write -t 2025-05 -s 100 -e 1234 -r 3 -w 4
+        
+        Example description:
+        
+        Writes devops data to the influx database with 
+        start date 2025-05-01, at a scale of 100, using
+        seed number 1234 and repeats 3 times, using 4 parallell workers
+        
+        Example usage read:
+        
+        python benchmark.py victoriametrics -u devops -o write
+        -t 2001-12 -s 8654 -e 9876 -r 7 -b 543 -w 10
+        
+        python benchmark.py victoriametrics -u devops -o read
+        -t 2001-12 -s 8654 -e 9876 -r 7 -b 543 -w 10
+        
+        Example description:
+        
+        First writes the data to victoria metrics, before using the
+        same parameters to read the data, with start date 2001-12,
+        at a scale of 8654, using seed number 9876 and repeates 7 times,
+        and the reads 543 queries at once, with 10 parallell workers
+        """
     )
 
     # General program running
