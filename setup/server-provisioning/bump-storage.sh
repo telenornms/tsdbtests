@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-pvcreate /dev/sdb
-vgextend vg0 /dev/sdb
+sudo pvcreate /dev/sdb
+sudo vgextend vg0 /dev/sdb
 
-lvresize -rL +15G vg0/tmp
-lvresize -rL +50G vg0/var
-lvresize -rL +15G vg0/home
-lvresize -rL +10G vg0/var-log
+sudo lvresize -rL +5G vg0/tmp
+sudo lvresize -rL +45G vg0/var
+sudo lvresize -rL +5G vg0/home
+sudo lvresize -rL +5G vg0/var-log
