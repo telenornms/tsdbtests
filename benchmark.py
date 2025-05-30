@@ -48,7 +48,7 @@ def generate_files(path_dict, args, timestamps, run_dict, query_dict):
     full_command = (
         " --use-case=" + use_case +
         " --format=" + args.format +
-        " --seed=" + str(args.seed+run_dict["run"]) +
+        " --seed=" + str(args.seed + run_dict["run"]) +
         " --scale=" + str(new_scale)
     )
 
@@ -71,7 +71,7 @@ def generate_files(path_dict, args, timestamps, run_dict, query_dict):
         # Generates a new timestamp for the end point at 1 second past data generation
         time_end = timestamps[str(args.runs-1)][1].split("T")
         time_end = (
-            datetime.datetime.strptime(time_end[0]+" "+time_end[1][:-1], "%Y-%m-%d %H:%M:%S") +
+            datetime.datetime.strptime(time_end[0] + " " + time_end[1][:-1], "%Y-%m-%d %H:%M:%S") +
             datetime.timedelta(seconds=1)
         )
 
@@ -132,10 +132,10 @@ def process_tsbs(path_dict, args, db_setup):
     )
 
     if args.operation == "write":
-        full_command += " --batch-size " + str(args.batch)
+        full_command = full_command + " --batch-size " + str(args.batch)
 
     for arg in db_setup[args.format]["extra_args"]:
-        full_command += arg
+        full_command = full_command + arg
 
     output = subprocess.run(full_command, shell=True, capture_output=True, text=True, check=False)
 
@@ -630,7 +630,7 @@ def main():
     # The file path for where tsbs is stored, default is in the project folder
     # The use cases for the files
     path_dict = {
-        "main_path": str(pathlib.Path(str(pathlib.Path.cwd()), "tsbs")),
+        "main_path": str(pathlib.Path(pathlib.Path.cwd(), "tsbs")),
         "use_case": ["devops", "iot"]
     }
 
