@@ -411,8 +411,6 @@ def handle_args():
         python benchmark.py -f influx -a <influx auth-token> 
         -u devops -o write -t 2025-05 -s 100 -e 1234 -r 3 -w 4
         
-        Example description:
-        
         Writes devops data to the influx database with 
         start date 2025-05-01, at a scale of 100, using
         seed number 1234 and repeats 3 times, using 4 parallell workers
@@ -425,13 +423,11 @@ def handle_args():
         python benchmark.py victoriametrics -u devops -o read
         -t 2001-12 -s 8654 -e 9876 -r 7 -b 543 -w 10
         
-        Example description:
-        
         First writes the data to victoria metrics, before using the
         same parameters to read the data, with start date 2001-12,
         at a scale of 8654, using seed number 9876 and repeates 7 times,
-        and the reads 543 queries at once, with 10 parallell workers
-        """
+        and the reads reads 543 queries at once, with 10 parallell workers
+        """, formatter_class=argparse.RawTextHelpFormatter
     )
 
     # General program running
