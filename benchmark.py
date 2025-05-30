@@ -426,7 +426,7 @@ def handle_args():
         First writes the data to victoria metrics, before using the
         same parameters to read the data, with start date 2001-12,
         at a scale of 8654, using seed number 9876 and repeates 7 times,
-        and the reads reads 543 queries at once, with 10 parallell workers
+        and then reads reads 543 queries per run, with 10 parallell workers
         """, formatter_class=argparse.RawTextHelpFormatter
     )
 
