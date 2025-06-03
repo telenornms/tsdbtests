@@ -657,20 +657,16 @@ def main():
     output_file = "tsbs_" + args.format
 
     if args.operation == "write":
-        output_file += (
-            "_write" +
-            "_s" + str(args.scale) +
-            "_w" + str(args.workers)
-        )
+        output_file += "_write"
     elif args.operation == "read":
-        output_file += (
-            "_read" +
-            "_s" + str(args.scale) +
-            "_w" + str(args.workers) +
-            "_q" + str(args.queries)
-        )
-
-    output_file += ".json"
+        output_file += "_read"
+        
+    output_file += (
+        "_s" + str(args.scale) +
+        "_w" + str(args.workers) +
+        "_q" + str(args.queries) +
+        ".json"
+    )
 
     with open(output_file, "w", encoding="ASCII") as f:
         json.dump(avg_dict, f, indent=4)
