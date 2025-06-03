@@ -4,23 +4,23 @@
 
 - Download from GitHub release:
 
-```
-wget https://github.com/VictoriaMetrics/VictoriaMetrics/releases/download/v1.116.0/victoria-metrics-linux-amd64-v1.116.0.tar.gz
+```bash
+wget https://github.com/VictoriaMetrics/VictoriaMetrics/releases/download/v1.118.0/victoria-metrics-linux-amd64-v1.118.0.tar.gz
 ```
 
 - Install
 
-```
+```bash
 sudo tar -xvf <victoriametrics-archive> -C /usr/local/bin
 ```
 
-```
+```bash
 sudo useradd -s /usr/sbin/nologin victoriametrics
 
 sudo mkdir -p /var/lib/victoria-metrics && sudo chown -R victoriametrics:victoriametrics /var/lib/victoria-metrics
 ```
 
-```
+```bash
 sudo bash -c 'cat <<END >/etc/systemd/system/victoriametrics.service
 [Unit]
 Description=VictoriaMetrics service
@@ -48,7 +48,7 @@ END'
 
 ## Start VictoriaMetrics Service
 
-```
+```bash
 sudo systemctl daemon-reload && sudo systemctl enable victoriametrics.service
 
 sudo systemctl start victoriametrics.service
@@ -58,6 +58,6 @@ sudo systemctl status victoriametrics.service
 
 ## View GUI
 
-```
+```bash
 localhost:8428/vmui
 ```
