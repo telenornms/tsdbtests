@@ -651,7 +651,8 @@ def main():
         "workers": args.workers, 
         "runs": args.runs,
         "read_queries": args.queries,
-        "start_date": start_date
+        "start_date": start_date,
+        "operation": args.operation
     }
 
     output_file = "tsbs_" + args.format
