@@ -7,6 +7,7 @@ import subprocess
 import sys
 import re
 import pathlib
+import tempfile
 import json
 import argparse
 import datetime
@@ -28,9 +29,11 @@ def generate_files(path_dict, args, timestamps, run_dict, query_dict):
             A dict containing the query type and a JSON safe query name
     """
 
-    run_path = path_dict["main_path"] + "bin/tsbs_generate_"
+    # The path to your tsbs/bin folder
+    run_path = str(pathlib.Path(path_dict["main_path"], "bin", "tsbs_generate_"))
 
-    file_path = "/tmp/" + path_dict["test_file"] + ".gz"
+    #The path to your folder storing the TSBS generated files
+    file_path = str(pathlib.Path(tempfile.gettempdir(), path_dict["test_file"] + ".gz"))
 
     use_case = path_dict["use_case"][run_dict["file_number"]]
 
@@ -45,7 +48,7 @@ def generate_files(path_dict, args, timestamps, run_dict, query_dict):
     full_command = (
         " --use-case=" + use_case +
         " --format=" + args.format +
-        " --seed=" + str(args.seed+run_dict["run"]) +
+        " --seed=" + str(args.seed + run_dict["run"]) +
         " --scale=" + str(new_scale)
     )
 
@@ -68,7 +71,7 @@ def generate_files(path_dict, args, timestamps, run_dict, query_dict):
         # Generates a new timestamp for the end point at 1 second past data generation
         time_end = timestamps[str(args.runs-1)][1].split("T")
         time_end = (
-            datetime.datetime.strptime(time_end[0]+" "+time_end[1][:-1], "%Y-%m-%d %H:%M:%S") +
+            datetime.datetime.strptime(time_end[0] + " " + time_end[1][:-1], "%Y-%m-%d %H:%M:%S") +
             datetime.timedelta(seconds=1)
         )
 
@@ -109,17 +112,17 @@ def process_tsbs(path_dict, args, db_setup):
     """
 
     # The path to your tsbs/bin folder
-    run_path = path_dict["main_path"] + "bin/tsbs_"
+    run_path = str(pathlib.Path(path_dict["main_path"], "bin", "tsbs_"))
 
     #The path to your folder storing the TSBS generated files
-    file_path = "/tmp/" + path_dict["test_file"] + ".gz"
+    file_path = str(pathlib.Path(tempfile.gettempdir(), path_dict["test_file"] + ".gz"))
 
     if args.operation == "write":
         print("Loading data for " + args.format + " with file: " + file_path)
-        run_path += "load_" + args.format
+        run_path = run_path + "load_" + args.format
     elif args.operation == "read":
         print("Running query for " + args.format + " with file: " + file_path)
-        run_path += "run_queries_" + args.format
+        run_path = run_path + "run_queries_" + args.format
 
     full_command = (
         "cat " + file_path +
@@ -129,10 +132,10 @@ def process_tsbs(path_dict, args, db_setup):
     )
 
     if args.operation == "write":
-        full_command += " --batch-size " + str(args.batch)
+        full_command = full_command + " --batch-size " + str(args.batch)
 
     for arg in db_setup[args.format]["extra_args"]:
-        full_command += arg
+        full_command = full_command + arg
 
     output = subprocess.run(full_command, shell=True, capture_output=True, text=True, check=False)
 
@@ -151,7 +154,7 @@ def process_tsbs(path_dict, args, db_setup):
         processed_output = handle_query(output)
 
     # Removes the file after done loading
-    path_file_path = pathlib.Path("/tmp/" + path_dict["test_file"] + ".gz")
+    path_file_path = pathlib.Path(file_path)
     pathlib.Path.unlink(path_file_path)
 
     return processed_output
@@ -406,32 +409,29 @@ def handle_args():
         description="""
         A script for testing TSBS using multiple runs
         
-        Example usage write:
+        EXAMPLE WRITE:
         
-        python benchmark.py -f influx -a <influx auth-token> 
+        >>> python benchmark.py -f influx -a <influx auth-token> 
         -u devops -o write -t 2025-05 -s 100 -e 1234 -r 3 -w 4
-        
-        Example description:
         
         Writes devops data to the influx database with 
         start date 2025-05-01, at a scale of 100, using
         seed number 1234 and repeats 3 times, using 4 parallell workers
         
-        Example usage read:
+        EXAMPLE READ:
         
-        python benchmark.py victoriametrics -u devops -o write
+        >>> python benchmark.py victoriametrics -u devops -o write
         -t 2001-12 -s 8654 -e 9876 -r 7 -b 543 -w 10
         
-        python benchmark.py victoriametrics -u devops -o read
+        >>> python benchmark.py victoriametrics -u devops -o read
         -t 2001-12 -s 8654 -e 9876 -r 7 -b 543 -w 10
-        
-        Example description:
         
         First writes the data to victoria metrics, before using the
         same parameters to read the data, with start date 2001-12,
         at a scale of 8654, using seed number 9876 and repeates 7 times,
-        and the reads 543 queries at once, with 10 parallell workers
-        """
+        and then reads reads 543 queries per run, with 10 parallell workers
+        """,
+        formatter_class=argparse.RawTextHelpFormatter
     )
 
     # General program running
@@ -630,7 +630,7 @@ def main():
     # The file path for where tsbs is stored, default is in the project folder
     # The use cases for the files
     path_dict = {
-        "main_path": str(pathlib.Path.cwd()) + "/tsbs/",
+        "main_path": str(pathlib.Path(pathlib.Path.cwd(), "tsbs")),
         "use_case": ["devops", "iot"]
     }
 
@@ -651,26 +651,23 @@ def main():
         "workers": args.workers, 
         "runs": args.runs,
         "read_queries": args.queries,
-        "start_date": start_date
+        "start_date": start_date,
+        "operation": args.operation
     }
 
     output_file = "tsbs_" + args.format
 
     if args.operation == "write":
-        output_file += (
-            "_write" +
-            "_s" + str(args.scale) +
-            "_w" + str(args.workers)
-        )
+        output_file += "_write"
     elif args.operation == "read":
-        output_file += (
-            "_read" +
-            "_s" + str(args.scale) +
-            "_w" + str(args.workers) +
-            "_q" + str(args.queries)
-        )
-
-    output_file += ".json"
+        output_file += "_read"
+        
+    output_file += (
+        "_s" + str(args.scale) +
+        "_w" + str(args.workers) +
+        "_q" + str(args.queries) +
+        ".json"
+    )
 
     with open(output_file, "w", encoding="ASCII") as f:
         json.dump(avg_dict, f, indent=4)
