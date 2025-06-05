@@ -6,13 +6,43 @@ import argparse
 import os
 # import sys
 
-def read_json(args):
+def get_file_list(args):
+    """
+    Gets the list of files from either the file list or directory
+    
+    Parameters:
+        args : argparse.Namespace
+            The args for the file, either files or folder
+            
+    Returns:
+        file_list : list
+            A list of all filenames
+    """
+    
+    file_list = []
+    
+    if args.files:
+        file_list = args.files
+    elif args.dir:
+        try:
+            items = os.listdir(args.dir)
+            
+            for item in items:
+                file_path = os.path.join(args.dir, item)
+                if os.path.isfile(file_path):
+                    file_list.append(file_path)
+        except FileNotFoundError:
+            print("Directory not found")
+        
+    return file_list
+
+def read_json(file_list):
     """
     Reads the json files
     
     Parameters:
-        args: argparse.Namespace
-            The args for the file, either files or folder
+        file_list : list
+            The list of all filenames
             
     Returns:
         json_list : list
@@ -21,31 +51,15 @@ def read_json(args):
 
     json_list = []
 
-    if args.files:
-        for filename in args.files:
+    for filename in file_list:
             try:
                 with open(filename, "r", encoding="ASCII") as file:
                     data = json.load(file)
                     json_list.append(data)
             except FileNotFoundError:
                 print("File not found")
-    elif args.dir:
-        try:
-            items = os.listdir(args.dir)
 
-            for item in items:
-                file_path = os.path.join(args.dir, item)
-                if os.path.isfile(file_path):
-                    try:
-                        with open(file_path, "r", encoding="ASCII") as file:
-                            data = json.load(file)
-                            json_list.append(data)
-                    except FileNotFoundError:
-                        print("File not found")
-        except FileNotFoundError:
-            print("Directory not found")
-
-    return json_list
+    return create_compare_dict(json_list)
 
 def create_compare_dict(json_list):
     """
@@ -94,7 +108,7 @@ def create_compare_dict(json_list):
                     "q" + str(file["metadata"]["read_queries"])
                 ]["metadata"] = file["metadata"]
 
-    return compare_dict
+    return get_scores(compare_dict)
 
 def get_scores(compare_dict):
     """
@@ -131,7 +145,7 @@ def get_scores(compare_dict):
             elif key == "metadata":
                 score_dict[meta_key]["metadata"] = compare_dict[meta_key]["metadata"]
 
-    return score_dict
+    return order_ranking(score_dict)
 
 def calculate_variation(times):
     """
@@ -146,7 +160,6 @@ def calculate_variation(times):
             A dict containing the largest variation and the percentage of the variation
     """
 
-    print(times)
     time_list, avg_time = times[0], times[1]
     largest_var = 0
     percent = 0
@@ -228,19 +241,8 @@ def main():
 
     args = parser.parse_args()
 
-    json_list = read_json(args)
-    compare_dict = create_compare_dict(json_list)
-    score_dict = get_scores(compare_dict)
-    ordered_dict = order_ranking(score_dict)
-
-    # ordered_dict["metadata"] = {
-    #     "scale": metadata_dict["scale"],
-    #     "seed": metadata_dict["seed"],
-    #     "workers": metadata_dict["workers"],
-    #     "runs": metadata_dict["runs"],
-    #     "read_queries": metadata_dict["read_queries"],
-    #     "start_date": metadata_dict["start_date"]
-    # }
+    file_list = get_file_list(args)
+    ordered_dict = read_json(file_list)
 
     output_file = "tsbs_ranking.json"
 
