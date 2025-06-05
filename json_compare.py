@@ -4,6 +4,8 @@ Compares the json files from benchmark
 import json
 import argparse
 import pathlib
+import matplotlib.pyplot as plt
+import numpy as np
 # import sys
 
 def get_file_list(args):
@@ -18,9 +20,9 @@ def get_file_list(args):
         file_list : list
             A list of all filenames
     """
-    
+
     file_list = []
-    
+
     if args.files:
         file_list = args.files
     elif args.dir:
@@ -30,7 +32,7 @@ def get_file_list(args):
 
         except FileNotFoundError:
             print("Directory not found")
-        
+
     return file_list
 
 def read_json(file_list):
@@ -186,7 +188,7 @@ def order_ranking(score_dict):
             
     Returns:
         o_dict : dict
-            The dict with all the ranked, actually ranked properly 
+            The dict with all the dbs ranked, actually ranked properly 
     """
 
     o_dict = {}
@@ -217,6 +219,85 @@ def order_ranking(score_dict):
                 }
 
     return o_dict
+
+def draw_plot(ordered_dict):
+    """
+    Creates bar graphs for each use-case, ranked by time
+    Saves them to file
+    
+    Parameters:
+        ordered_dict : dict
+            The dict with all the dbs ranked, actually ranked properly 
+    """
+    
+    name_colors = {
+        "influx": "#AEE0D7",
+        "questdb": "#FFFFC9",
+        "timescaledb": "#D1CEE4",
+        "victoriametrics": "#A5C8E0"
+    }
+    
+    for meta, data in ordered_dict.items():
+        
+        num_cases = 0
+
+        del data["metadata"]
+        num_cases = len(data)
+
+        fig, axes = plt.subplots(1, num_cases, figsize=(5*num_cases, 6))
+        
+        # colors = plt.cm.Set3(np.linspace(0, 1, 10))
+        
+        for idx, (use_case, case_data) in enumerate(data.items()):
+            ax = axes[idx]
+            
+            rankings = case_data["ranking"]
+            variation = case_data["variation"]
+            
+            sorted_items = sorted(rankings.items(), key=lambda x: x[0])
+            sorted_dbs = [item[0] for item in sorted_items]
+            
+            x_labels = sorted_dbs
+            y_values = [rankings[db] for db in sorted_dbs]
+            errors = [variation[db]["largest_var"] for db in sorted_dbs]
+            bar_colors = [name_colors[db] for db in sorted_dbs]
+            
+            bars = ax.bar(
+                x_labels, 
+                y_values, 
+                yerr=errors, 
+                capsize=5,
+                ecolor="black",
+                color=bar_colors,
+                alpha=0.7,
+                edgecolor="black",
+                linewidth=1
+            )
+            
+            ax.set_title(f"{use_case.title()}", fontsize=14, fontweight="bold")
+            ax.set_xlabel("Databases", fontsize=12)
+            ax.set_ylabel("Time", fontsize=12)
+            ax.grid(True, alpha=0.3, axis="y")
+            
+            for bar, value, error in zip(bars, y_values, errors):
+                height = bar.get_height()
+                ax.text(
+                    bar.get_x() + bar.get_width()/2., 
+                    height + error,
+                    f"{value:.1f}±{error:.1f}",
+                    ha="center",
+                    va="bottom",
+                    fontsize=10,
+                    fontweight="bold"
+                )
+                
+            if len(x_labels) > 3:
+                ax.tick_params(axis="x", rotation=45)
+                
+        plt.tight_layout()
+        save_path = str(meta) + ".svg"
+        plt.savefig(save_path, format="svg", bbox_inches="tight")
+        print("Saved graph to: " + save_path)
 
 def main():
     """
@@ -251,6 +332,8 @@ def main():
 
     with open(output_file, "w", encoding="ASCII") as f:
         json.dump(ordered_dict, f, indent=4)
+        
+    draw_plot(ordered_dict)
 
 if __name__ == "__main__":
     main()
