@@ -5,8 +5,6 @@ import json
 import argparse
 import pathlib
 import matplotlib.pyplot as plt
-import numpy as np
-# import sys
 
 def get_file_list(args):
     """
@@ -220,7 +218,7 @@ def order_ranking(score_dict):
 
     return o_dict
 
-def draw_plot(ordered_dict):
+def draw_plot(ordered_dict, name_colors):
     """
     Creates bar graphs for each use-case, ranked by time
     Saves them to file
@@ -229,60 +227,49 @@ def draw_plot(ordered_dict):
         ordered_dict : dict
             The dict with all the dbs ranked, actually ranked properly 
     """
-    
-    name_colors = {
-        "influx": "#AEE0D7",
-        "questdb": "#FFFFC9",
-        "timescaledb": "#D1CEE4",
-        "victoriametrics": "#A5C8E0"
-    }
-    
+
     for meta, data in ordered_dict.items():
-        
-        num_cases = 0
-
         del data["metadata"]
-        num_cases = len(data)
 
-        fig, axes = plt.subplots(1, num_cases, figsize=(5*num_cases, 6))
-        
-        # colors = plt.cm.Set3(np.linspace(0, 1, 10))
-        
+        _, axes = plt.subplots(1, len(data), figsize=(5*len(data), 6))
+
         for idx, (use_case, case_data) in enumerate(data.items()):
             ax = axes[idx]
-            
+
             rankings = case_data["ranking"]
             variation = case_data["variation"]
-            
-            sorted_items = sorted(rankings.items(), key=lambda x: x[0])
-            sorted_dbs = [item[0] for item in sorted_items]
-            
-            x_labels = sorted_dbs
-            y_values = [rankings[db] for db in sorted_dbs]
-            errors = [variation[db]["largest_var"] for db in sorted_dbs]
-            bar_colors = [name_colors[db] for db in sorted_dbs]
-            
+
+            sorted_dbs = [item[0] for item in sorted(rankings.items(), key=lambda x: x[0])]
+
+            graph_vals = {
+                "x_labels": sorted_dbs,
+                "y_values": [rankings[db] for db in sorted_dbs],
+                "errors": [variation[db]["largest_var"] for db in sorted_dbs],
+                "bar_colors": [name_colors[db] for db in sorted_dbs]
+            }
+
+            # Making the bars
             bars = ax.bar(
-                x_labels, 
-                y_values, 
-                yerr=errors, 
+                graph_vals["x_labels"],
+                graph_vals["y_values"],
+                yerr=graph_vals["errors"],
                 capsize=5,
                 ecolor="black",
-                color=bar_colors,
+                color=graph_vals["bar_colors"],
                 alpha=0.7,
                 edgecolor="black",
                 linewidth=1
             )
-            
+
             ax.set_title(f"{use_case.title()}", fontsize=14, fontweight="bold")
             ax.set_xlabel("Databases", fontsize=12)
             ax.set_ylabel("Time", fontsize=12)
             ax.grid(True, alpha=0.3, axis="y")
-            
-            for bar, value, error in zip(bars, y_values, errors):
-                height = bar.get_height()
+
+            for bar_graph, value, error in zip(bars, graph_vals["y_values"], graph_vals["errors"]):
+                height = bar_graph.get_height()
                 ax.text(
-                    bar.get_x() + bar.get_width()/2., 
+                    bar_graph.get_x() + bar_graph.get_width()/2.,
                     height + error,
                     f"{value:.1f}±{error:.1f}",
                     ha="center",
@@ -290,10 +277,10 @@ def draw_plot(ordered_dict):
                     fontsize=10,
                     fontweight="bold"
                 )
-                
-            if len(x_labels) > 3:
+
+            if len(graph_vals["x_labels"]) > 3:
                 ax.tick_params(axis="x", rotation=45)
-                
+
         plt.tight_layout()
         save_path = str(meta) + ".svg"
         plt.savefig(save_path, format="svg", bbox_inches="tight")
@@ -332,8 +319,15 @@ def main():
 
     with open(output_file, "w", encoding="ASCII") as f:
         json.dump(ordered_dict, f, indent=4)
-        
-    draw_plot(ordered_dict)
+
+    name_colors = {
+        "influx": "#AEE0D7",
+        "questdb": "#FFFFC9",
+        "timescaledb": "#D1CEE4",
+        "victoriametrics": "#A5C8E0"
+    }
+
+    draw_plot(ordered_dict, name_colors)
 
 if __name__ == "__main__":
     main()
