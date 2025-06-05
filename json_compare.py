@@ -3,7 +3,7 @@ Compares the json files from benchmark
 """
 import json
 import argparse
-import os
+import pathlib
 # import sys
 
 def get_file_list(args):
@@ -25,12 +25,9 @@ def get_file_list(args):
         file_list = args.files
     elif args.dir:
         try:
-            items = os.listdir(args.dir)
-            
-            for item in items:
-                file_path = os.path.join(args.dir, item)
-                if os.path.isfile(file_path):
-                    file_list.append(file_path)
+            # Gets all objects in the folder and adds it to file_list, if it is a file
+            file_list = [str(f) for f in pathlib.Path(args.dir).iterdir() if f.is_file()]
+
         except FileNotFoundError:
             print("Directory not found")
         
@@ -52,12 +49,16 @@ def read_json(file_list):
     json_list = []
 
     for filename in file_list:
-            try:
-                with open(filename, "r", encoding="ASCII") as file:
-                    data = json.load(file)
-                    json_list.append(data)
-            except FileNotFoundError:
-                print("File not found")
+        if pathlib.Path(filename).suffix != ".json":
+            print("SKIPPED: " + filename)
+            continue
+        try:
+            print("READING: " + filename)
+            with open(filename, "r", encoding="ASCII") as file:
+                data = json.load(file)
+                json_list.append(data)
+        except FileNotFoundError:
+            print("File not found")
 
     return create_compare_dict(json_list)
 
