@@ -298,25 +298,27 @@ def main():
     parser = argparse.ArgumentParser(description="Read multiple JSON files to compare")
 
     parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Defines a verbose output"
+    )
+    
+    arg_group = parser.add_mutually_exclusive_group(required=True)
+    
+    arg_group.add_argument(
         "-f",
         "--files",
         nargs="*",
         help="The files to open",
         type=str
     )
-
-    parser.add_argument(
+    
+    arg_group.add_argument(
         "-d",
         "--dir",
         help="The directory of the files",
         type=str
-    )
-
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        help="Defines a verbose output"
     )
 
     args = parser.parse_args()
