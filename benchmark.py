@@ -363,8 +363,7 @@ def running_handler(path_dict, args, db_setup, timestamps, read_dict):
                     db_runs_dict[key_name]["t_run"].append(query_return_dict["time"])
                     db_runs_dict[key_name]["queries"].append(query_return_dict["query"])
 
-        if args.verbose:
-            print("All " + str(args.runs)+ " runs completed\n")
+        print("All " + str(args.runs)+ " runs completed\n")
         file_number += 1
 
     return db_runs_dict
@@ -441,7 +440,12 @@ def handle_args():
     )
 
     # General program running
-    parser.add_argument(
+    gen_args = parser.add_argument_group(
+        title="General arguments",
+        description="General arguments for database and operation choices"
+    )
+
+    gen_args.add_argument(
         "-f", 
         "--format", 
         help="The database format, REQUIRED",
@@ -449,7 +453,7 @@ def handle_args():
         required=True,
         type=str
     )
-    parser.add_argument(
+    gen_args.add_argument(
         "-o",
         "--operation",
         help="Which type of operation you want to run, REQUIRED",
@@ -457,14 +461,14 @@ def handle_args():
         required=True,
         type=str
     )
-    parser.add_argument(
+    gen_args.add_argument(
         "-u",
         "--use_case",
         help="If you only want to ingest one use case",
         choices=["devops", "iot"],
         type=str
     )
-    parser.add_argument(
+    gen_args.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -472,37 +476,42 @@ def handle_args():
     )
 
     # Arguments for data load/query run
-    parser.add_argument(
+    load_run_args = parser.add_argument_group(
+        title="Load/Run Arguments",
+        description="Arguments used when loading data or running queries"
+    )
+
+    load_run_args.add_argument(
         "-d",
         "--db_name",
         help="The database you are using for test",
         type=str
     )
-    parser.add_argument(
+    load_run_args.add_argument(
         "-p",
         "--password",
         help="The password for the database/user, REQUIRED for TimeScale",
         type=str
     )
-    parser.add_argument(
+    load_run_args.add_argument(
         "-a",
         "--auth_token",
         help="The token for the database/user, REQUIRED for Influx",
         type=str
     )
-    parser.add_argument(
+    load_run_args.add_argument(
         "-w",
         "--workers",
         help="The number of simultaneous processes to run the database load, default=4",
         type=int
     )
-    parser.add_argument(
+    load_run_args.add_argument(
         "-r",
         "--runs",
         help="The number of runs per file, default=5",
         type=int
     )
-    parser.add_argument(
+    load_run_args.add_argument(
         "-b",
         "--batch",
         help="Number of items to batch together in a single run, default=10000",
@@ -510,34 +519,37 @@ def handle_args():
     )
 
     # Arguments for data generation
-    parser.add_argument(
+    generation_args = parser.add_argument_group(
+        title="Generation Arguments",
+        description="Arguments for generating data or queries"
+    )
+
+    generation_args.add_argument(
         "-s",
         "--scale",
         help="The scale for the files, default=1000 for iot and cpu, default=100 for devops",
         type=int
     )
-    parser.add_argument(
+    generation_args.add_argument(
         "-e",
         "--seed",
         help="The seed for data generation, same data across all formats, default=123",
         type=int
     )
-    parser.add_argument(
+    generation_args.add_argument(
         "-t",
         "--time",
         help="The start time for the data generation, format YYYY-MM, REQUIRED",
         type=str,
         required=True
     )
-    parser.add_argument(
+    generation_args.add_argument(
         "-l",
         "--log_time",
         help="The time between data points, in seconds, default=10",
         type=int
     )
-
-    # Arguments for query generation
-    parser.add_argument(
+    generation_args.add_argument(
         "-q",
         "--queries",
         help="The number of queries to be ran, default=5000",
@@ -673,7 +685,7 @@ def main():
         output_file += "_write"
     elif args.operation == "read":
         output_file += "_read"
-        
+
     output_file += (
         "_s" + str(args.scale) +
         "_w" + str(args.workers) +
