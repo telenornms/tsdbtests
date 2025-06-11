@@ -29,11 +29,11 @@ def get_file_list(args):
             file_list = [str(f) for f in pathlib.Path(args.dir).iterdir() if f.is_file()]
 
         except FileNotFoundError:
-            print("Directory not found")
+            print("ERROR: Directory not found")
 
     return file_list
 
-def read_json(file_list):
+def read_json(file_list, verbose):
     """
     Reads the json files
     
@@ -50,15 +50,17 @@ def read_json(file_list):
 
     for filename in file_list:
         if pathlib.Path(filename).suffix != ".json":
-            print("SKIPPED: " + filename)
+            if verbose:
+                print("SKIPPED: " + filename)
             continue
         try:
-            print("READING: " + filename)
+            if verbose:
+                print("READING: " + filename)
             with open(filename, "r", encoding="ASCII") as file:
                 data = json.load(file)
                 json_list.append(data)
         except FileNotFoundError:
-            print("File not found")
+            print("ERROR: File not found")
 
     return create_compare_dict(json_list)
 
@@ -123,6 +125,7 @@ def get_scores(compare_dict):
         score_dict : dict
             The dict with all the ranks, unranked
     """
+
     score_dict = {}
 
     for meta_key in compare_dict.keys():
@@ -218,7 +221,7 @@ def order_ranking(score_dict):
 
     return o_dict
 
-def draw_plot(ordered_dict, name_colors):
+def draw_plot(ordered_dict, name_colors, verbose):
     """
     Creates bar graphs for each use-case, ranked by time
     Saves them to file
@@ -284,7 +287,8 @@ def draw_plot(ordered_dict, name_colors):
         plt.tight_layout()
         save_path = str(meta) + ".svg"
         plt.savefig(save_path, format="svg", bbox_inches="tight")
-        print("Saved graph to: " + save_path)
+        if verbose:
+            print("Saved graph to: " + save_path)
 
 def main():
     """
@@ -308,14 +312,22 @@ def main():
         type=str
     )
 
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Defines a verbose output"
+    )
+
     args = parser.parse_args()
 
     file_list = get_file_list(args)
-    ordered_dict = read_json(file_list)
+    ordered_dict = read_json(file_list, args.verbose)
 
     output_file = "tsbs_ranking.json"
 
-    print("Output written to: " + output_file)
+    if args.verbose:
+        print("Output written to: " + output_file)
 
     with open(output_file, "w", encoding="ASCII") as f:
         json.dump(ordered_dict, f, indent=4)
@@ -327,7 +339,7 @@ def main():
         "victoriametrics": "#A5C8E0"
     }
 
-    draw_plot(ordered_dict, name_colors)
+    draw_plot(ordered_dict, name_colors, args.verbose)
 
 if __name__ == "__main__":
     main()

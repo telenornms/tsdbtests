@@ -89,7 +89,8 @@ def generate_files(path_dict, args, timestamps, run_dict, query_dict):
 
     full_command = full_command + " | gzip > " + file_path
 
-    print("Creating file: " + file_path)
+    if args.verbose:
+        print("Creating file: " + file_path)
 
     subprocess.run(full_command, shell=True, capture_output=True, check=False)
 
@@ -118,10 +119,12 @@ def process_tsbs(path_dict, args, db_setup):
     file_path = str(pathlib.Path(tempfile.gettempdir(), path_dict["test_file"] + ".gz"))
 
     if args.operation == "write":
-        print("Loading data for " + args.format + " with file: " + file_path)
+        if args.verbose:
+            print("Loading data for " + args.format + " with file: " + file_path)
         run_path = run_path + "load_" + args.format
     elif args.operation == "read":
-        print("Running query for " + args.format + " with file: " + file_path)
+        if args.verbose:
+            print("Running query for " + args.format + " with file: " + file_path)
         run_path = run_path + "run_queries_" + args.format
 
     full_command = (
@@ -144,7 +147,7 @@ def process_tsbs(path_dict, args, db_setup):
     for line in output.stderr.strip().split("\n"):
         if re.findall(r'panic', line, re.IGNORECASE):
             print(output.stderr)
-            sys.exit("Database error!")
+            sys.exit("ERROR: Database error!")
 
     processed_output = ()
 
@@ -315,10 +318,12 @@ def running_handler(path_dict, args, db_setup, timestamps, read_dict):
 
     for key_name in use_dict:
         path_dict["test_file"] = args.format + "_" + key_name
-        print("Running with " + path_dict["test_file"])
+        if args.verbose:
+            print("Running with " + path_dict["test_file"])
 
         for run in range(args.runs):
-            print("Run number: " + str(run+1))
+            if args.verbose:
+                print("Run number: " + str(run+1))
 
             if args.operation == "write":
                 run_dict = {"file_number": file_number, "run": run}
@@ -358,7 +363,8 @@ def running_handler(path_dict, args, db_setup, timestamps, read_dict):
                     db_runs_dict[key_name]["t_run"].append(query_return_dict["time"])
                     db_runs_dict[key_name]["queries"].append(query_return_dict["query"])
 
-        print("All " + str(args.runs)+ " runs completed\n")
+        if args.verbose:
+            print("All " + str(args.runs)+ " runs completed\n")
         file_number += 1
 
     return db_runs_dict
@@ -457,6 +463,12 @@ def handle_args():
         help="If you only want to ingest one use case",
         choices=["devops", "iot"],
         type=str
+    )
+    parser.add_argument(
+        "-o",
+        "--verbose",
+        action="store_true",
+        help="Defines a verbose output"
     )
 
     # Arguments for data load/query run
@@ -634,7 +646,7 @@ def main():
         "use_case": ["devops", "iot"]
     }
 
-    # Also Removes it from path_dict use_case
+    # Removes extra use case from path_dict use_case
     if args.use_case:
         path_dict["use_case"] = [args.use_case]
 
@@ -672,7 +684,8 @@ def main():
     with open(output_file, "w", encoding="ASCII") as f:
         json.dump(avg_dict, f, indent=4)
 
-    print("Output written to: " + output_file)
+    if args.verbose:
+        print("Output written to: " + output_file)
 
 if __name__ == "__main__":
     main()
