@@ -465,7 +465,7 @@ def handle_args():
         type=str
     )
     parser.add_argument(
-        "-o",
+        "-v",
         "--verbose",
         action="store_true",
         help="Defines a verbose output"
